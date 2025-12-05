@@ -1,7 +1,7 @@
 
 utils={}
 
-utils.sleep = require('time.sleep')
+utils.msleep = require('time.sleep.msleep')
 
 utils.log = {}
 local colors = require('ansicolors')
@@ -30,10 +30,12 @@ function utils.log.debug(msg)
         _log('debug  ', msg)
     end
 end
-function utils.log.error(msg)
+function utils.log.error(msg, ext)
     local i = debug.getinfo(2, 'S')
     _log('error  ', msg)
-    error(i.source)
+    if ext then
+        error(i.source)
+    end
 end
 function utils.log.warning(msg)
     _log('warning', msg)
@@ -47,7 +49,7 @@ utils.dump = function(data)
         true,
         function(x) out = out .. x end
     )
-    return out
+    return string.gsub(out, '\n$', '')
 end
 
 return utils
