@@ -1,10 +1,11 @@
 return function(target, opt)
+    local label = opt.type .. '/' .. target
     local msleep = require('time.sleep.msleep')
 
     if opt.debug then
         utils.log.enable_debug()
     end
-    utils.log.info('start server check: ' .. opt.type .. '/' .. target)
+    utils.log.info('start server check: ' .. label)
 
     local function ipc(msg)
         local socket = posix.sys.socket
@@ -34,10 +35,11 @@ return function(target, opt)
     end
     while true do
         s = sleep
+
+        -- we split target here in ip and port to solve hostname -> ip
         ip = utils.toip(utils.split(target,':')[1])
         port = utils.split(target,':')[2]
-
-        r = worker(target, ip, port, opt)        
+        r = worker(label, ip, port, opt)        
 
         if r ~= 0 then
             v = r
@@ -47,16 +49,16 @@ return function(target, opt)
                 if errors < opt.serverSoftFail then
                     v = v_old
                     errors = errors + 1
-                    utils.log.warning('servercheck: ' .. target .. ': soft-failed: ' .. v .. ' ' .. errors .. '/' .. opt.serverSoftFail)
+                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. errors .. '/' .. opt.serverSoftFail)
                 else
                     v = 0
                     s = opt.failMultiplier * sleep
-                    utils.log.error('servercheck: ' .. target .. ': hard-failed')
+                    utils.log.error('servercheck: ' .. label .. ': hard-failed')
                 end
             end 
         end
         if v ~= v_old then
-            utils.log.info('servercheck: ' .. target .. ': ' .. v_old .. ' -> ' .. v)
+            utils.log.info('servercheck: ' .. label .. ': ' .. v_old .. ' -> ' .. v)
             if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
             end

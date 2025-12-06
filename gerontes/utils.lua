@@ -8,7 +8,9 @@ utils.log = {}
 local colors = require('ansicolors')
 local function _log(lvl, msg)
     local l = string.sub(lvl, 1, 1)
-    if l == 'd' then
+    if l == 'i' then
+        clr = 'bright white'
+    elseif l == 'd' then
         clr = 'cyan'
     elseif l == 'e' then
         clr = 'red'
@@ -51,6 +53,28 @@ utils.dump = function(data)
         function(x) out = out .. x end
     )
     return string.gsub(out, '\n$', '')
+end
+
+utils.parse_args = function(def, args)
+    opt = {}
+    for k, v in pairs(def) do
+        opt[k] = v
+    end
+    for _,a in ipairs(args) do
+        a = utils.split(a,'=')
+        opt[a[1]] = tonumber(a[2]) or a[2]
+        opt[a[1]] = a[2] or true
+    end 
+    if opt.debug then
+        utils.log.enable_debug()
+    end
+    for o,v in pairs(opt) do
+        if v == '_' then
+            utils.log.error('parse-args:' .. o ..  ' is undefined', true)
+        end
+    end
+    utils.log.debug('parse-args: dump:\n' .. utils.dump(opt))
+    return opt
 end
 
 return utils

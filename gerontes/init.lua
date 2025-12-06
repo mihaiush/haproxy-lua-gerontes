@@ -2,7 +2,7 @@ posix = require('posix')
 utils = require('gerontes.utils')
 
 -- receive events from forks
-function service_ipc(applet)
+local function service_ipc(applet)
     local r
     local l = applet:getline()
     l = string.gsub(l, '\n$', '')
@@ -20,9 +20,10 @@ function service_ipc(applet)
     end
     applet:send(r .. '\n')
 end
+core.register_service('gerontes_ipc', 'tcp', service_ipc)
 
 -- if one netcheck is up -> network up
-function up_net()
+function netcheck_sum()
     for _,n in pairs(N) do
         if n == 1 then
             return true
@@ -34,13 +35,15 @@ end
 -- update servers status
 -- it should be called every time a network/server check changes
 function update_servers()
-    local n   -- net status
-    local mn  -- master name
-    local mv  -- master value
+    local n_sum -- net staus
+    local mn    -- master name
+    local mv    -- master value
     local sv
+    local n
+    n_sum = netcheck_sum()
     for bn,bd in pairs(B) do
         n = true
-        if bd.netcheck and not up_net() then
+        if bd.netcheck and not n_sum then
             n = false
         end
         mv = 0
@@ -64,39 +67,9 @@ function update_servers()
     end
 end
 
--- options
--- _, mandatory without default
-opt = {}
-opt.type           = '_'  -- server type
-opt.sleep          = 0.3  -- seconds between 2 checks
-opt.netTimeout     = 7    -- network check timeout, multiple of sleep
-opt.serverSoftFail = 7    -- how many times a server check can fail before marking it down
-opt.netSoftFail    = 3    -- how many times a network check can fail before marking it down
-opt.failMultiplier = 15   -- multiplier of sleep in case the server/network were marked down
-opt.netCheck       = ''   -- what endpoints to check for network conectivity IP1:PORT1,IP2:PORT2,..,IPn:PORTn
-opt.ipcSock        = '_' -- socket used for communication with background processes
--- opt.serverTimeout  = 17   -- server check timeout, multiple of sleep
-local args = table.pack(...)
-for _,a in ipairs(args) do
-    a = utils.split(a,'=')
-    if a[1] == 'debug' then
-        opt.debug = true
-        utils.log.enable_debug() 
-    else
-        opt[a[1]] = a[2]
-    end
-end
-for o,v in pairs(opt) do
-    if v == '_' then
-        utils.log.error('opt:' .. o ..  ' is undefined', true)
-    end
-end
-utils.log.debug('opt:\n' .. utils.dump(opt))
-
 B={} -- backends
 S={} -- servers
 N={} -- net
-core.register_service('gerontes_ipc', 'tcp', service_ipc)
 core.register_init(
     function()
         local bo -- backend options
@@ -140,13 +113,32 @@ core.register_init(
             core.register_task(task_netcheck, t)
         end
 
-        -- start srv check threads
+        -- start servercheck forks
         local srvcheck = require('gerontes.srvcheck')
         for t,_ in pairs(S) do
             if posix.fork() == 0 then
-                srvcheck(t, opt)
-                error('exit fork ' .. t)
+                -- in case unexpected error raises in forked process we restart
+                while true do
+                    ok, r = pcall(srvcheck, t, opt)
+                    if not ok then
+                        utils.log.error('servercheck terminated with error: ' .. r)
+                    end
+                end
             end
         end
     end
 )
+
+-- options
+-- _, mandatory without default
+opt = {}
+opt.debug          = false
+opt.type           = '_'   -- server type
+opt.sleep          = 0.3   -- seconds between 2 checks
+opt.netTimeout     = 7     -- network check timeout, multiple of sleep
+opt.netSoftFail    = 3     -- how many times a network check can fail before marking it down
+opt.netCheck       = ''    -- what endpoints to check for network conectivity IP1:PORT1,IP2:PORT2,..,IPn:PORTn
+opt.serverSoftFail = 5     -- how many times a server check can fail before marking it down
+opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
+opt.ipcSock        = '_'   -- socket used for communication with background processes
+opt = utils.parse_args(opt, {...})
