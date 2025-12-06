@@ -6,12 +6,12 @@ return function(target, opt)
     end
     utils.log.info('start server check: ' .. opt.type .. '/' .. target)
 
-    local function ipc(s)
+    local function ipc(msg)
         local socket = posix.sys.socket
         local sockfd = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM, 0)
         local r = socket.connect(sockfd, {family = socket.AF_UNIX, path = opt.ipcSock})
         if r == 0 then
-	        socket.send(sockfd, s .. "\n")
+	        socket.send(sockfd, msg .. "\n")
             r = socket.recv(sockfd, 1024)
 	        socket.shutdown(sockfd, socket.SHUT_RDWR)
         else

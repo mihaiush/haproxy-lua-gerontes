@@ -1,8 +1,8 @@
 posix = require('posix')
 utils = require('gerontes.utils')
 
--- receive events from background threads
-function service_bkg_event(applet)
+-- receive events from forks
+function service_ipc(applet)
     local r
     local l = applet:getline()
     l = string.gsub(l, '\n$', '')
@@ -32,6 +32,7 @@ function up_net()
 end
 
 -- update servers status
+-- it should be called every time a network/server check changes
 function update_servers()
     local n   -- net status
     local mn  -- master name
@@ -95,7 +96,7 @@ utils.log.debug('opt:\n' .. utils.dump(opt))
 B={} -- backends
 S={} -- servers
 N={} -- net
-core.register_service('gerontes_bkg_event', 'tcp', service_bkg_event)
+core.register_service('gerontes_ipc', 'tcp', service_ipc)
 core.register_init(
     function()
         local bo -- backend options
