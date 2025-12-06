@@ -1,7 +1,8 @@
 
 utils={}
 
-utils.msleep = require('time.sleep.msleep')
+utils.split = require('string.split')
+utils.toip = require('socket').dns.toip
 
 utils.log = {}
 local colors = require('ansicolors')
