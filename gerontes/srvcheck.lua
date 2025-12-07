@@ -30,6 +30,9 @@ return function(target, opt)
     local port
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
+    local ok = false
+    
+    msleep (2 * sleep) -- wait for ipc to start
     while ipc('ping') ~= 'ok' do
         utils.log.error('servercheck: ' .. label .. ': ipc check failed')
         msleep(sleep)
@@ -40,9 +43,9 @@ return function(target, opt)
         -- we split target here in ip and port to solve hostname -> ip
         ip = utils.toip(utils.split(target,':')[1])
         port = utils.split(target,':')[2]
-        r = worker(label, ip, port, opt)        
+        ok, r = worker(label, ip, port, opt)        
 
-        if r ~= 0 then
+        if ok then
             v = r
             err = 0
         else
@@ -50,11 +53,11 @@ return function(target, opt)
                 if err < opt.softFail then
                     v = v_old
                     err = err + 1
-                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail)
+                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail ..': ' .. r)
                 else
                     v = 0
                     s = opt.failMultiplier * sleep
-                    utils.log.error('servercheck: ' .. label .. ': hard-failed')
+                    utils.log.error('servercheck: ' .. label .. ': hard-failed' .. ': ' .. r)
                 end
             end 
         end

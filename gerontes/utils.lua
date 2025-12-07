@@ -19,7 +19,7 @@ local function _log(lvl, msg)
     else
         clr = 'reset'
     end
-    print(colors('%{' .. clr .. '}[gerontes][' .. lvl .. '] ' .. os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. msg .. '%{reset}'))
+    io.stderr:write(colors('%{' .. clr .. '}[gerontes][' .. lvl .. '] ' .. os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. msg .. '%{reset}\n'))
 end
 local _debug = false
 function utils.log.enable_debug()
