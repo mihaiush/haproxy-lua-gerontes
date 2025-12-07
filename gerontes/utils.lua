@@ -55,25 +55,38 @@ utils.dump = function(data)
     return string.gsub(out, '\n$', '')
 end
 
-utils.parse_args = function(def, args)
-    opt = {}
+utils.parse_args = function(def, args, s1, s2, m)
+    -- key/value separator
+    if not s1 then
+        s1 = '='
+    end
+    -- args separator
+    if not s2 then
+        s2 = ' '
+    end
+    -- mandatory marker
+    if not m then
+        m = '_'
+    end
+    if type(args) == 'string' then
+        args = utils.split(args, s2)
+    end
+    local opt = {}
     for k, v in pairs(def) do
         opt[k] = v
     end
     for _,a in ipairs(args) do
-        a = utils.split(a,'=')
-        opt[a[1]] = tonumber(a[2]) or a[2]
-        opt[a[1]] = a[2] or true
+        a = utils.split(a, s1, 1)
+        if a[1] ~= '' then
+            opt[a[1]] = tonumber(a[2]) or a[2]
+            opt[a[1]] = a[2] or true
+        end
     end 
-    if opt.debug then
-        utils.log.enable_debug()
-    end
     for o,v in pairs(opt) do
-        if v == '_' then
+        if v == m then
             utils.log.error('parse-args:' .. o ..  ' is undefined', true)
         end
     end
-    utils.log.debug('parse-args: dump:\n' .. utils.dump(opt))
     return opt
 end
 

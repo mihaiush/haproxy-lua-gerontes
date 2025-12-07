@@ -74,20 +74,20 @@ core.register_init(
     function()
         local bo -- backend options
         for bn,bd in pairs(core.backends) do -- backend name, backend data
-            _,_,_,bo = bn:find('(.+)__gerontes(.*)')
+            _,_,_,bo = bn:find('(.+)__gerontes_?(.*)')
             if bo then
                 B[bn] = {}
+                bo = utils.parse_args({netcheck=false}, bo, ':', '_')
+                utils.log.debug('backend: ' .. bn .. ': opt:\n' .. utils.dump(bo))
+                B[bn]['netcheck'] = bo.netcheck
+                if bo.netcheck then
+                    utils.log.info('backend: ' .. bn .. ': has netcheck')
+                end
                 B[bn]['servers'] = {}
                 for sn,_ in pairs(bd.servers) do
                     utils.log.info('backend: ' .. bn .. ': server: ' .. sn)
                     table.insert(B[bn]['servers'], sn)
                     S[sn] = 0
-                end
-                B[bn]['netcheck'] = false
-                n,_,_ = bo:find('_netcheck')
-                if n then
-                    B[bn]['netcheck'] = true
-                    utils.log.info('backend: ' .. bn .. ': has netcheck')
                 end
             end
         end
@@ -130,7 +130,6 @@ core.register_init(
 )
 
 -- options
--- _, mandatory without default
 opt = {}
 opt.debug          = false
 opt.type           = '_'   -- server type
@@ -142,3 +141,8 @@ opt.serverSoftFail = 5     -- how many times a server check can fail before mark
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 opt.ipcSock        = '_'   -- socket used for communication with background processes
 opt = utils.parse_args(opt, {...})
+if opt.debug then
+    utils.log.enable_debug()
+end
+utils.log.debug('opt:\n' .. utils.dump(opt))
+
