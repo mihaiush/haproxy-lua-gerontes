@@ -21,16 +21,17 @@ return function(target, opt)
         return string.gsub(r, '\n$', '')
     end
 
-    local errors = 0
     local sleep = 1000 * opt.sleep
-    local v = 0
     local s
+    local v = 0
     local v_old = -1
+    local err = 0
     local ip 
     local port
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     while ipc('ping') ~= 'ok' do
+        utils.log.error('servercheck: ' .. label .. ': ipc check failed')
         msleep(sleep)
     end
     while true do
@@ -43,13 +44,13 @@ return function(target, opt)
 
         if r ~= 0 then
             v = r
-            errors = 0
+            err = 0
         else
             if v_old ~= -1 then
-                if errors < opt.serverSoftFail then
+                if err < opt.softFail then
                     v = v_old
-                    errors = errors + 1
-                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. errors .. '/' .. opt.serverSoftFail)
+                    err = err + 1
+                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail)
                 else
                     v = 0
                     s = opt.failMultiplier * sleep
