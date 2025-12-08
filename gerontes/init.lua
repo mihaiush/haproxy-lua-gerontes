@@ -84,7 +84,11 @@ core.register_init(
                 utils.log.debug('backend: ' .. bn .. ': opt:\n' .. utils.dump(bo))
                 B[bn]['xcheck'] = bo.xcheck
                 if bo.xcheck then
-                    utils.log.info('backend: ' .. bn .. ': has xcheck')
+                    if opt.xCheck then
+                        utils.log.info('backend: ' .. bn .. ': has xcheck')
+                    else
+                        utils.log.warning('backend: ' .. bn .. ': has xcheck but opt.xCheck is not defined')
+                    end
                 end
                 B[bn]['servers'] = {}
                 for sn,_ in pairs(bd.servers) do
@@ -128,13 +132,15 @@ core.register_init(
 
 -- options
 opt = {}
-opt.debug          = false
 opt.type           = '_'   -- server type
 opt.sleep          = 0.3   -- seconds between 2 checks
---opt.xCheck         = false -- what proxy to use for extra check
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
+opt.debug          = nil
+opt.xCheck         = nil -- what backend to use for extra check
+opt.mysqlUser      = nil
+opt.mysqlPassword  = nil
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()

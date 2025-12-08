@@ -1,6 +1,6 @@
 return function(label, ip, port, opt)
-    local redis = require('redis')
     return pcall(function()
+        local redis = require('redis')
         redis = redis.connect(ip, port)
         local info = redis:info('server').server
         return 1000 * (math.floor(info.server_time_usec/1000000) - info.uptime_in_seconds)
