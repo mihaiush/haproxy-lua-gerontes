@@ -79,7 +79,11 @@ utils.parse_args = function(def, args, s1, s2, m)
         a = utils.split(a, s1, 1)
         if a[1] ~= '' then
             opt[a[1]] = tonumber(a[2]) or a[2]
-            opt[a[1]] = a[2] or true
+            if a[2] == 'yes' or a[2] == 'true' or not a[2] then
+                opt[a[1]] = true
+            elseif a[2] == 'no' or a[2] == 'false' then 
+                opt[a[1]] = false
+            end
         end
     end 
     for o,v in pairs(opt) do
