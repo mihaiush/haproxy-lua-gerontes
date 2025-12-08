@@ -1,6 +1,11 @@
 posix = require('posix')
 utils = require('gerontes.utils')
 
+-- metrics
+local service_metrics = require('gerontes.metrics')
+core.register_service('gerontes_metrics', 'http', service_metrics)
+
+
 -- receive events from forks
 local function service_ipc(applet)
     local r
@@ -23,10 +28,11 @@ local function service_ipc(applet)
 end
 core.register_service('gerontes_ipc', 'tcp', service_ipc)
 
+
 -- update servers status
--- it should be called for every status change
+-- it should be called for every server or xcheck status change
 function update_servers(src)
-    local xc    -- xcheck value
+    local xc    -- xcheck value 
     local mn    -- master name
     local mv    -- master value
     local sv
@@ -71,8 +77,9 @@ function update_servers(src)
     end
 end
 
-B={} -- backends
-S={} -- servers
+
+B = {} -- backends
+S = {} -- servers
 core.register_init(
     function()
         local bo -- backend options
@@ -91,7 +98,7 @@ core.register_init(
                     end
                 end
                 B[bn]['servers'] = {}
-                for sn,_ in pairs(bd.servers) do
+                for sn,sd in pairs(bd.servers) do
                     utils.log.info('backend: ' .. bn .. ': server: ' .. sn)
                     table.insert(B[bn]['servers'], sn)
                     S[sn] = 0
@@ -130,6 +137,7 @@ core.register_init(
     end
 )
 
+
 -- options
 opt = {}
 opt.type           = '_'   -- server type
@@ -141,6 +149,7 @@ opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
+opt.metrics        = nil -- haproxy metrics url
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()
