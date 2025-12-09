@@ -13,7 +13,8 @@ return function(applet)
     r = r .. 'gerontes_info{type="' .. opt.type .. '",xcheck="' .. tostring(opt.xCheck) .. '"} 1\n'
 
     for sn,sv in pairs(S) do
-         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
+        r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
+        r = r .. 'gerontes_server_latency_usec{server="' .. sn .. '"} ' .. tostring(S_latency[sn]) .. '\n'
     end
 
     for bn,bd in pairs(B) do

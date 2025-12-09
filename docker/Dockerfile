@@ -46,6 +46,9 @@ RUN \
     export DEBIAN_FRONTEND=noninteractive &&\
     apt-get -y update &&\
     apt-get -y install \
+        tini \
         libmariadb3
 
 USER haproxy
+
+ENTRYPOINT ["/usr/bin/tini", "--", "haproxy"]

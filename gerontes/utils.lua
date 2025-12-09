@@ -6,6 +6,14 @@ utils.toip = require('socket').dns.toip
 
 utils.log = {}
 local colors = require('ansicolors')
+local _colors = false
+function utils.log.enable_colors()
+    _colors = true
+end
+local _debug = false
+function utils.log.enable_debug()
+    _debug = true
+end
 local function _log(lvl, msg)
     local l = string.sub(lvl, 1, 1)
     if l == 'i' then
@@ -19,11 +27,11 @@ local function _log(lvl, msg)
     else
         clr = 'reset'
     end
-    io.stderr:write(colors('%{' .. clr .. '}[gerontes][' .. lvl .. '] ' .. os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. msg .. '%{reset}\n'))
-end
-local _debug = false
-function utils.log.enable_debug()
-    _debug = true
+    msg = '[gerontes][' .. lvl .. '] ' .. os.date('%Y-%m-%d %H:%M:%S') .. ' ' .. msg
+    if _colors then
+        msg = colors('%{' .. clr .. '}' .. msg .. '%{reset}')
+    end
+    io.stderr:write(msg .. '\n')
 end
 function utils.log.info(msg)
     _log('info   ', msg)
@@ -49,7 +57,7 @@ utils.dump = function(data)
     local out = ''
     print_r(
         data,
-        true,
+        _colors,
         function(x) out = out .. x end
     )
     return string.gsub(out, '\n$', '')

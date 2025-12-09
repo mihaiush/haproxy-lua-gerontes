@@ -1,5 +1,10 @@
 return function(target, opt)
     local label = opt.type .. '/' .. target
+    
+    local worker_pipe = '/dev/shm/' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
+    local worker_pid = worker_pipe .. '.pid' -- worker pid: PID 
+    worker_pipe = worker_pipe .. '.pipe'
+    
     local msleep = require('time.sleep.msleep')
 
     if opt.debug then
@@ -31,6 +36,9 @@ return function(target, opt)
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     local ok = false
+    local checks_total = 0
+    local checks_usec = 0
+    local t
     
     msleep (2 * sleep) -- wait for ipc to start
     while ipc('ping') ~= 'ok' do
@@ -43,12 +51,78 @@ return function(target, opt)
         -- we split target here in ip and port to solve hostname -> ip
         ip = utils.toip(utils.split(target,':')[1])
         port = utils.split(target,':')[2]
-        ok, r = worker(label, ip, port, opt)        
+
+        -- we fork in order to implement timeout
+        -- fork twice to detach from main process
+        os.remove(worker_pipe)
+        os.remove(worker_pid)
+        local fpipe
+        local fpid
+        local pid
+        
+        if posix.fork() == 0 then
+            pid = posix.fork()
+            if pid == 0 then
+                ok, r = worker(label, ip, port, opt)
+                -- write fpipe        
+                fpipe = io.open(worker_pipe, 'w+')
+                fpipe:write(tostring(ok) .. '\0')
+                fpipe:write(tostring(r))
+                fpipe:close()
+                os.exit()
+            end
+            fpid = io.open(worker_pid, 'w+')
+            fpid:write(tostring(pid))
+            fpid:close()
+            os.exit()
+        end
+
+        t = 1000000 * os.clock()
+
+        -- read fpipe
+        local i = sleep / 10
+        local j = 1000 * opt.timeout / i
+        while j > 0 do
+            msleep(i)
+            fpipe = io.open(worker_pipe, 'r')
+            if fpipe then
+                break
+            end
+            j = j - 1
+        end
+        if fpipe then
+            r = fpipe:read('a')
+            fpipe:close()
+            r = utils.split(r, '\0')
+            if r[1] == 'true' then
+                -- worker ok
+                ok = true
+                r = tonumber(r[2])
+            else
+                -- worker error
+                ok = false
+                r = r[2]
+            end
+        else
+            -- worker timeout
+            ok = false
+            r = 'timeout'
+            -- kill worker
+            fpid = io.open(worker_pid, 'r')
+            pid = fpid:read(fpid, 'a')
+            fpid:close()
+            pcall(posix.kill, pid, 9)
+        end
+
+        t = 1000000 * os.clock() - t
+        checks_total = checks_total + 1
+        checks_usec = checks_usec + t
 
         if ok then
             v = r
             err = 0
         else
+            r = tostring(r)
             if v_old ~= -1 then
                 if err < opt.softFail then
                     v = v_old
@@ -61,12 +135,15 @@ return function(target, opt)
                 end
             end 
         end
-        if v ~= v_old then
+        if v ~= v_old or (opt.ipcForce and checks_total >= opt.ipcForce) then
             utils.log.info('servercheck: ' .. label .. ': ' .. v_old .. ' -> ' .. v)
-            if ipc('server ' .. target .. ' ' .. v) == 'ok' then
+            if ipc('server ' .. target .. ' ' .. v .. ' ' .. checks_usec/checks_total) == 'ok' then
                 v_old = v
             end
+            checks_total = 0
+            checks_usec = 0
         end
+ 
         msleep(s)
     end
 end

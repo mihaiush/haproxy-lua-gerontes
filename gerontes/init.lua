@@ -19,6 +19,7 @@ local function service_ipc(applet)
         utils.log.info('ipc: check ok')
     elseif cmd == 'server' then
         S[l[2]] = tonumber(l[3])
+        S_latency[l[2]] = tonumber(l[4])
         update_servers('ipc/' .. l[2])
         r = 'ok'
     else 
@@ -80,6 +81,7 @@ end
 
 B = {} -- backends
 S = {} -- servers
+S_latency = {} 
 core.register_init(
     function()
         local bo -- backend options
@@ -127,11 +129,12 @@ core.register_init(
             if posix.fork() == 0 then
                 -- in case unexpected error raises in forked process we restart
                 while true do
-                    ok, r = pcall(srvcheck, t, opt)
+                    local ok, r = pcall(srvcheck, t, opt)
                     if not ok then
                         utils.log.error('servercheck terminated with error: ' .. r)
                     end
                 end
+                os.exit(1)
             end
         end
     end
@@ -142,17 +145,22 @@ core.register_init(
 opt = {}
 opt.type           = '_'   -- server type
 opt.sleep          = 0.3   -- seconds between 2 checks
+opt.timeout        = 2     -- check timeout seconds
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
+opt.ipcForce       = nil -- after how many checks to force ipc (normal only at status change)
 opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
-opt.metrics        = nil -- haproxy metrics url
+opt.metrics        = nil -- haproxy metrics url 
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()
+end
+if opt.logColors then
+    utils.log.enable_colors()
 end
 utils.log.debug('opt:\n' .. utils.dump(opt))
 
