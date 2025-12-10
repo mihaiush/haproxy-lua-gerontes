@@ -1,5 +1,5 @@
 return function(target, opt)
-    local label = opt.type .. '/' .. target
+    local label = opt.type .. '/' .. target -- log label
     
     local worker_data = '/dev/shm/' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
     local worker_pid = worker_data .. '.pid' -- worker pid: PID 
@@ -7,10 +7,12 @@ return function(target, opt)
     
     local msleep = require('time.sleep.msleep')
 
+
     if opt.debug then
         utils.log.enable_debug()
     end
     utils.log.info('start server check: ' .. label)
+    label = 'servercheck: ' .. label
 
     local function ipc(msg)
         local socket = posix.sys.socket
@@ -39,7 +41,7 @@ return function(target, opt)
     
     msleep (2 * sleep) -- wait for ipc to start
     while ipc('ping') ~= 'ok' do
-        utils.log.error('servercheck: ' .. label .. ': ipc check failed')
+        utils.log.error(label .. ': ipc check failed')
         msleep(sleep)
     end
     
@@ -117,23 +119,28 @@ return function(target, opt)
                 if err < opt.softFail then
                     v = v_old
                     err = err + 1
-                    utils.log.warning('servercheck: ' .. label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail ..': ' .. r)
+                    utils.log.warning(label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail ..': ' .. r)
                 else
                     v = 0
                     s = opt.failMultiplier * sleep
-                    utils.log.error('servercheck: ' .. label .. ': hard-failed' .. ': ' .. r)
+                    utils.log.error(label .. ': hard-failed' .. ': ' .. r)
                 end
             end 
         end
         if v ~= v_old then
-            utils.log.info('servercheck: ' .. label .. ': ' .. v_old .. ' -> ' .. v)
+            utils.log.info(label .. ': ' .. v_old .. ' -> ' .. v)
             if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
             end
         end
  
+        fdata = nil
+        fpid = nil
+        pid = nil
+        ok = nil
+        r = nil
+
         msleep(s)
-        collectgarbage()
     end
 end
 
