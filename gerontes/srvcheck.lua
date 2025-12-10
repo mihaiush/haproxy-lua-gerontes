@@ -45,8 +45,6 @@ return function(target, opt)
         msleep(sleep)
     end
     
-    
-
     while true do
         s = sleep
 
@@ -80,11 +78,13 @@ return function(target, opt)
         while j > 0 do
             msleep(i)
             fdata = io.open(worker_data, 'r')
-            if fdata then
+            if fdata and fdata:read('a') then
+                fdata:close()
                 break
             end
             j = j - 1
         end
+        fdata = io.open(worker_data, 'r')
         if fdata then
             r = fdata:read('a')
             fdata:close()
@@ -107,6 +107,7 @@ return function(target, opt)
             pid = fpid:read('a')
             fpid:close()
             pcall(posix.kill, pid, 9)
+            s = 1 -- we already waited timeout
         end
 
         if ok then
