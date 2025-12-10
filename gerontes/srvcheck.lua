@@ -1,9 +1,9 @@
 return function(target, opt)
     local label = opt.type .. '/' .. target
     
-    local worker_pipe = '/dev/shm/' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
-    local worker_pid = worker_pipe .. '.pid' -- worker pid: PID 
-    worker_pipe = worker_pipe .. '.pipe'
+    local worker_data = '/dev/shm/' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
+    local worker_pid = worker_data .. '.pid' -- worker pid: PID 
+    worker_data = worker_data .. '.data'
     
     local msleep = require('time.sleep.msleep')
 
@@ -31,32 +31,30 @@ return function(target, opt)
     local v = 0
     local v_old = -1
     local err = 0
-    local ip 
-    local port
+    local ip = utils.split(target,':')[1]
+    local port = utils.split(target,':')[2]
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     local ok = false
     local checks_total = 0
     local checks_usec = 0
-    local t
     
     msleep (2 * sleep) -- wait for ipc to start
     while ipc('ping') ~= 'ok' do
         utils.log.error('servercheck: ' .. label .. ': ipc check failed')
         msleep(sleep)
     end
+    
+    
+
     while true do
         s = sleep
 
-        -- we split target here in ip and port to solve hostname -> ip
-        ip = utils.toip(utils.split(target,':')[1])
-        port = utils.split(target,':')[2]
-
         -- we fork in order to implement timeout
         -- fork twice to detach from main process
-        os.remove(worker_pipe)
+        os.remove(worker_data)
         os.remove(worker_pid)
-        local fpipe
+        local fdata
         local fpid
         local pid
         
@@ -64,11 +62,10 @@ return function(target, opt)
             pid = posix.fork()
             if pid == 0 then
                 ok, r = worker(label, ip, port, opt)
-                -- write fpipe        
-                fpipe = io.open(worker_pipe, 'w+')
-                fpipe:write(tostring(ok) .. '\0')
-                fpipe:write(tostring(r))
-                fpipe:close()
+                -- write fdata        
+                fdata = io.open(worker_data, 'w+')
+                fdata:write(tostring(ok) .. '\0' .. tostring(r))
+                fdata:close()
                 os.exit()
             end
             fpid = io.open(worker_pid, 'w+')
@@ -77,22 +74,20 @@ return function(target, opt)
             os.exit()
         end
 
-        t = 1000000 * os.clock()
-
-        -- read fpipe
+        -- read fdata
         local i = sleep / 10
         local j = 1000 * opt.timeout / i
         while j > 0 do
             msleep(i)
-            fpipe = io.open(worker_pipe, 'r')
-            if fpipe then
+            fdata = io.open(worker_data, 'r')
+            if fdata then
                 break
             end
             j = j - 1
         end
-        if fpipe then
-            r = fpipe:read('a')
-            fpipe:close()
+        if fdata then
+            r = fdata:read('a')
+            fdata:close()
             r = utils.split(r, '\0')
             if r[1] == 'true' then
                 -- worker ok
@@ -109,14 +104,10 @@ return function(target, opt)
             r = 'timeout'
             -- kill worker
             fpid = io.open(worker_pid, 'r')
-            pid = fpid:read(fpid, 'a')
+            pid = fpid:read('a')
             fpid:close()
             pcall(posix.kill, pid, 9)
         end
-
-        t = 1000000 * os.clock() - t
-        checks_total = checks_total + 1
-        checks_usec = checks_usec + t
 
         if ok then
             v = r
@@ -135,9 +126,9 @@ return function(target, opt)
                 end
             end 
         end
-        if v ~= v_old or (opt.ipcForce and checks_total >= opt.ipcForce) then
+        if v ~= v_old then
             utils.log.info('servercheck: ' .. label .. ': ' .. v_old .. ' -> ' .. v)
-            if ipc('server ' .. target .. ' ' .. v .. ' ' .. checks_usec/checks_total) == 'ok' then
+            if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
             end
             checks_total = 0

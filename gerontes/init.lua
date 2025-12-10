@@ -19,7 +19,6 @@ local function service_ipc(applet)
         utils.log.info('ipc: check ok')
     elseif cmd == 'server' then
         S[l[2]] = tonumber(l[3])
-        S_latency[l[2]] = tonumber(l[4])
         update_servers('ipc/' .. l[2])
         r = 'ok'
     else 
@@ -81,7 +80,6 @@ end
 
 B = {} -- backends
 S = {} -- servers
-S_latency = {} 
 core.register_init(
     function()
         local bo -- backend options
@@ -145,11 +143,10 @@ core.register_init(
 opt = {}
 opt.type           = '_'   -- server type
 opt.sleep          = 0.3   -- seconds between 2 checks
-opt.timeout        = 2     -- check timeout seconds
+opt.timeout        = 1     -- check timeout seconds
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
-opt.ipcForce       = nil -- after how many checks to force ipc (normal only at status change)
 opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil

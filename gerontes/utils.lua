@@ -2,7 +2,6 @@
 utils={}
 
 utils.split = require('string.split')
-utils.toip = require('socket').dns.toip
 
 utils.log = {}
 local colors = require('ansicolors')
