@@ -106,7 +106,7 @@ return function(target, opt)
             fpid = io.open(worker_pid, 'r')
             pid = fpid:read('a')
             fpid:close()
-            pcall(posix.kill, pid, 9)
+            posix.kill(pid, 9)
             s = 1 -- we already waited timeout
         end
 
