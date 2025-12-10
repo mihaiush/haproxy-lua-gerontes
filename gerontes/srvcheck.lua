@@ -36,8 +36,6 @@ return function(target, opt)
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     local ok = false
-    local checks_total = 0
-    local checks_usec = 0
     
     msleep (2 * sleep) -- wait for ipc to start
     while ipc('ping') ~= 'ok' do
@@ -78,7 +76,7 @@ return function(target, opt)
         while j > 0 do
             msleep(i)
             fdata = io.open(worker_data, 'r')
-            if fdata and fdata:read('a') then
+            if fdata and utils.split(fdata:read('a'), '\0')[2] then
                 fdata:close()
                 break
             end
@@ -132,11 +130,10 @@ return function(target, opt)
             if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
             end
-            checks_total = 0
-            checks_usec = 0
         end
  
         msleep(s)
+        collectgarbage()
     end
 end
 
