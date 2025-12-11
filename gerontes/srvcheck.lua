@@ -79,9 +79,8 @@ return function(target, opt)
             -- we fork in order to implement timeout
             os.remove(worker_data)
             local fdata
-            local pid
-
-            if posix.fork() == 0 then
+            local pid = posix.fork()
+            if pid == 0 then
                 -- local t1 = socket.gettime()
                 ok, r = worker(label, ip, port, opt)
                 -- utils.log.debug(label .. 'check msec: ' .. 1000 * (socket.gettime() - t1))
