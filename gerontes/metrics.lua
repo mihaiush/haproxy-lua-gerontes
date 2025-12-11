@@ -38,4 +38,7 @@ return function(applet)
     applet:add_header("content-type", "text/plain")
     applet:start_response()
     applet:send(r)
+
+    r = nil
+    v = nil
 end

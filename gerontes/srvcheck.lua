@@ -139,6 +139,7 @@ return function(target, opt)
         pid = nil
         ok = nil
         r = nil
+        v = nil
 
         msleep(s)
     end
