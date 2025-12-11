@@ -16,7 +16,7 @@ local function service_ipc(applet)
     cmd = l[1]
     if cmd == 'ping' then
         r = 'ok'
-        utils.log.info('ipc: check ok')
+        -- utils.log.info('ipc: check ok')
     elseif cmd == 'server' then
         S[l[2]] = tonumber(l[3])
         update_servers('ipc/' .. l[2])
@@ -123,20 +123,16 @@ core.register_init(
 
         -- start servercheck forks
         local srvcheck = require('gerontes.srvcheck')
-        local err
+        local ok
         for t,_ in pairs(S) do
             if posix.fork() == 0 then
-                -- in case unexpected error raises in forked process we restart
                 while true do
-                    if posix.fork() == 0 then
-                        local ok, r = pcall(srvcheck, t, opt)
-                        if not ok then
-                            utils.log.error('servercheck terminated with error: ' .. r)
-                        end
-                        os.exit()
+                    ok, r = pcall(srvcheck, t, opt)
+                    if not ok then
+                        utils.log.error('servercheck: ' .. t .. ': ' .. r)
                     end
-                    posix.wait()
                 end
+                -- this branch shoud stop here, not to move after init phase of haproxy
                 os.exit(1)
             end
         end
