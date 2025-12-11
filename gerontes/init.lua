@@ -123,14 +123,19 @@ core.register_init(
 
         -- start servercheck forks
         local srvcheck = require('gerontes.srvcheck')
+        local err
         for t,_ in pairs(S) do
             if posix.fork() == 0 then
                 -- in case unexpected error raises in forked process we restart
                 while true do
-                    local ok, r = pcall(srvcheck, t, opt)
-                    if not ok then
-                        utils.log.error('servercheck terminated with error: ' .. r)
+                    if posix.fork() == 0 then
+                        local ok, r = pcall(srvcheck, t, opt)
+                        if not ok then
+                            utils.log.error('servercheck terminated with error: ' .. r)
+                        end
+                        os.exit()
                     end
+                    posix.wait()
                 end
                 os.exit(1)
             end
@@ -146,6 +151,7 @@ opt.sleep          = 0.3   -- seconds between 2 checks
 opt.timeout        = 1     -- check timeout seconds
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
+opt.maxChecks      = 1000  -- after how many checks to recycle srvcheck process
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
 opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check

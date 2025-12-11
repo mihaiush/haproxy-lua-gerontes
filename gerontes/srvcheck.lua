@@ -4,6 +4,7 @@ return function(target, opt)
     local worker_data = '/dev/shm/' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
     local worker_pid = worker_data .. '.pid' -- worker pid: PID 
     worker_data = worker_data .. '.data'
+    label = 'servercheck: ' .. label .. ': '
     
     local msleep = require('time.sleep.msleep')
 
@@ -11,8 +12,7 @@ return function(target, opt)
     if opt.debug then
         utils.log.enable_debug()
     end
-    utils.log.info('start server check: ' .. label)
-    label = 'servercheck: ' .. label
+    utils.log.info(label .. 'start')
 
     local function ipc(msg)
         local socket = posix.sys.socket
@@ -28,6 +28,19 @@ return function(target, opt)
         return string.gsub(r, '\n$', '')
     end
 
+    local function get_worker_pid()
+        local p = nil
+        local f = io.open(worker_pid, 'r')
+        if f then
+            p = f:read('a')
+            f:close()
+            if p then
+                p = tonumber(p)
+            end
+        end
+        return p
+    end
+
     local sleep = 1000 * opt.sleep
     local s
     local v = 0
@@ -38,11 +51,11 @@ return function(target, opt)
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     local ok = false
+    local loops = 0
     
     msleep (2 * sleep) -- wait for ipc to start
-    while ipc('ping') ~= 'ok' do
-        utils.log.error(label .. ': ipc check failed')
-        msleep(sleep)
+    if ipc('ping') ~= 'ok' then
+        error('ipc check failed')
     end
     
     while true do
@@ -75,14 +88,16 @@ return function(target, opt)
         -- read fdata
         local i = sleep / 10
         local j = 1000 * opt.timeout / i
+        -- wait for worker to terminate or timeout
         while j > 0 do
             msleep(i)
-            fdata = io.open(worker_data, 'r')
-            if fdata and utils.split(fdata:read('a'), '\0')[2] then
-                fdata:close()
-                break
+            pid = get_worker_pid()
+            if pid then
+                if posix.kill(pid, 0) ~= 0 then
+                    break
+                end
+                j = j - 1
             end
-            j = j - 1
         end
         fdata = io.open(worker_data, 'r')
         if fdata then
@@ -103,9 +118,6 @@ return function(target, opt)
             ok = false
             r = 'timeout'
             -- kill worker
-            fpid = io.open(worker_pid, 'r')
-            pid = fpid:read('a')
-            fpid:close()
             posix.kill(pid, 9)
             s = 1 -- we already waited timeout
         end
@@ -119,29 +131,30 @@ return function(target, opt)
                 if err < opt.softFail then
                     v = v_old
                     err = err + 1
-                    utils.log.warning(label .. ': soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail ..': ' .. r)
+                    utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. opt.softFail ..': ' .. r)
                 else
                     v = 0
                     s = opt.failMultiplier * sleep
-                    utils.log.error(label .. ': hard-failed' .. ': ' .. r)
+                    utils.log.error(label .. 'hard-failed' .. ': ' .. r)
                 end
             end 
         end
-        if v ~= v_old then
-            utils.log.info(label .. ': ' .. v_old .. ' -> ' .. v)
+        -- send ipc message 
+        --  if value changes 
+        --- or error, to put DOWN new servers which start UP
+        if v ~= v_old or err >= opt.softFail then
+            utils.log.info(label .. v_old .. ' -> ' .. v)
             if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
             end
         end
  
-        fdata = nil
-        fpid = nil
-        pid = nil
-        ok = nil
-        r = nil
-        v = nil
-
         msleep(s)
+
+        loops = loops + 1
+        if loops >= opt.maxChecks then
+            os.exit()
+        end
     end
 end
 
