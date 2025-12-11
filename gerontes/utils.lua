@@ -30,8 +30,7 @@ local function _log(lvl, msg)
     if _colors then
         msg = colors('%{' .. clr .. '}' .. msg .. '%{reset}')
     end
-    -- io.stderr:write(msg .. '\n')
-    print(msg)
+    io.stderr:write(msg .. '\n')
 end
 function utils.log.info(msg)
     _log('info   ', msg)
