@@ -85,7 +85,6 @@ return function(target, opt)
             os.exit()
         end
 
-        -- read fdata
         local i = sleep / 10
         local j = 1000 * opt.timeout / i
         -- wait for worker to terminate or timeout
@@ -99,6 +98,7 @@ return function(target, opt)
                 j = j - 1
             end
         end
+        -- read data
         fdata = io.open(worker_data, 'r')
         if fdata then
             r = fdata:read('a')
@@ -140,9 +140,7 @@ return function(target, opt)
             end 
         end
         -- send ipc message 
-        --  if value changes 
-        --- or error, to put DOWN new servers which start UP
-        if v ~= v_old or err >= opt.softFail then
+        if v ~= v_old then -- or err >= opt.softFail then
             utils.log.info(label .. v_old .. ' -> ' .. v)
             if ipc('server ' .. target .. ' ' .. v) == 'ok' then
                 v_old = v
@@ -150,10 +148,12 @@ return function(target, opt)
         end
  
         msleep(s)
-
-        loops = loops + 1
-        if loops >= opt.maxChecks then
-            os.exit()
+        
+        if opt.maxChecks then
+            loops = loops + 1
+            if loops >= opt.maxChecks then
+                os.exit()
+            end
         end
     end
 end

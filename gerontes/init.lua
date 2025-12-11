@@ -151,13 +151,13 @@ opt.sleep          = 0.3   -- seconds between 2 checks
 opt.timeout        = 1     -- check timeout seconds
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
-opt.maxChecks      = 1000  -- after how many checks to recycle srvcheck process
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
 opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
 opt.metrics        = nil -- haproxy metrics url 
+opt.maxChecks      = nil -- after how many checks to recycle srvcheck process
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()
