@@ -65,15 +65,17 @@ function update_servers(src)
                 mv = sv
             end
         end
+        -- first DOWN then UP, no 2 servers can be up
         for sn,sd in pairs(core.backends[bn].servers) do
-            if sn == mn then
-                --sd:check_force_up()
-                sd:set_ready()
-                utils.log.debug('update_servers: ' .. bn .. '/' .. sn .. ' UP')            
-            else
-                --sd:check_force_down()
+            if sn ~= mn then
                 sd:set_maint()
                 utils.log.debug('update_servers: ' .. bn .. '/' .. sn .. ' DOWN')
+            end
+        end
+        for sn,sd in pairs(core.backends[bn].servers) do
+            if sn == mn then
+                sd:set_ready()
+                utils.log.debug('update_servers: ' .. bn .. '/' .. sn .. ' UP')
             end
         end
     end
