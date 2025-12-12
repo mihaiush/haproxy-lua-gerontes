@@ -66,7 +66,8 @@ return function(target, opt)
     if ipc('ping') ~= 'ok' then
         error('ipc check failed')
     end
-    
+
+    os.remove(main_data)    
     dump_data(v_old, err)
     
 
