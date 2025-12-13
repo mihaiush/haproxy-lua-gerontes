@@ -21,6 +21,10 @@ local function service_ipc(applet)
         S[l[2]] = tonumber(l[3])
         update_servers('ipc/' .. l[2])
         r = 'ok'
+    elseif cmd == 'metrics' then
+        M['loop_latency'][l[2]] = l[3]
+        M['server_latency'][l[2]] = l[4]
+        r = 'ok'
     else 
         r = 'err'
     end
@@ -84,6 +88,7 @@ end
 
 B = {} -- backends
 S = {} -- servers
+M = { ['loop_latency'] = {}, ['server_latency'] = {} } -- metrics
 core.register_init(
     function()
         local bo -- backend options
@@ -156,8 +161,8 @@ opt.debug          = nil
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
-opt.metrics        = nil -- haproxy metrics url 
-opt.maxChecks      = nil -- after how many checks to recycle srvcheck process
+opt.haproxyMetrics = nil -- haproxy metrics url 
+opt.latencyMetrics = nil -- after how many checks to report latency metrics
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()

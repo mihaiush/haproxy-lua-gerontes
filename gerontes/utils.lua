@@ -101,4 +101,9 @@ utils.parse_args = function(def, args, s1, s2, m)
     return opt
 end
 
+utils.tobool = function(s)
+    local s2b = { ["true"]=true, ["false"]=false }
+    return s2b[s]
+end
+
 return utils

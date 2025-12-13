@@ -2,18 +2,23 @@ return function(applet)
     local r = ''
     local v
 
-    if opt.metrics then
-        local m = core.httpclient():get{url=opt.metrics}
+    if opt.haproxyMetrics then
+        local m = core.httpclient():get{url=opt.haproxyMetrics}
         if m.status == 200 then
             r = r .. '\n' .. m.body .. '\n'
-        else
         end
     end
 
-    r = r .. 'gerontes_info{type="' .. opt.type .. '",xcheck="' .. tostring(opt.xCheck) .. '"} 1\n'
+    r = r .. 'gerontes_info{type="' .. opt.type .. '"} 1\n'
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
+        if M['loop_latency'][sn] then
+            r = r .. 'gerontes_loop_latency_msec{server="' .. sn .. '"} ' .. tostring(M['loop_latency'][sn]) .. '\n'
+        end
+        if M['server_latency'][sn] then
+            r = r .. 'gerontes_server_latency_msec{server="' .. sn .. '"} ' .. tostring(M['server_latency'][sn]) .. '\n'
+        end
     end
 
     for bn,bd in pairs(B) do
@@ -40,5 +45,4 @@ return function(applet)
     applet:send(r)
 
     r = nil
-    v = nil
 end

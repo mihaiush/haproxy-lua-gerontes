@@ -13,27 +13,29 @@ return function(target, opt)
     end
     utils.log.info(label .. 'start')
 
-    -- move data between forks
-    function dump_data(...)
-        local r = ''
-        for _,v in ipairs({...}) do
-            r = r .. tostring(v) .. '\0'
-        end
+    -- save vars between forks
+    local v_old = -1
+    local err = 0
+    local loop_count = 0
+    local loop_latency = 0
+    local check_latency = 0    
+    function save_vars(...)
         local f = io.open(main_data, 'w+')
-        f:write(r)
+        f:write(v_old .. '\n')
+        f:write(err .. '\n')
+        f:write(loop_count .. '\n')
+        f:write(loop_latency .. '\n')
+        f:write(check_latency .. '\n')
         f:close()
     end
-    function load_data()
+    function load_vars()
         local f = io.open(main_data, 'r')
-        local r = f:read('a')
+        v_old = tonumber(f:read('*line'))
+        err = tonumber(f:read('*line'))
+        loop_count = tonumber(f:read('*line'))
+        loop_latency = tonumber(f:read('*line'))
+        check_latency = tonumber(f:read('*line'))
         f:close()
-        local o = {}
-        for _,v in ipairs(utils.split(r, '\0')) do
-            if v ~= '' then
-                table.insert(o, tonumber(v) or v)
-            end
-        end
-        return table.unpack(o)
     end
     
     local function ipc(msg)
@@ -53,14 +55,16 @@ return function(target, opt)
     local sleep = 1000 * opt.sleep
     local s
     local v = 0
-    local v_old = -1
-    local err = 0
     local ip = utils.split(target,':')[1]
     local port = utils.split(target,':')[2]
     local worker = require('gerontes.srvcheck_' .. opt.type)
     local r = 0
     local ok = false
-    local t
+    local t0, t1
+    local sw = 1000 * opt.timeout / 50 -- worker check sleep
+    if sw < 10 then
+        sw = 10
+    end
     
     msleep (2 * sleep) -- wait for ipc to start
     if ipc('ping') ~= 'ok' then
@@ -68,13 +72,12 @@ return function(target, opt)
     end
 
     os.remove(main_data)    
-    dump_data(v_old, err)
+    save_vars()
     
-
     while true do
-        -- local t0 = socket.gettime()
+        t0 = socket.gettime()
         if posix.fork() == 0 then
-            v_old, err = load_data()
+            load_vars()
             s = sleep
 
             -- we fork in order to implement timeout
@@ -82,17 +85,18 @@ return function(target, opt)
             local fdata
             local pid = posix.fork()
             if pid == 0 then
-                -- local t1 = socket.gettime()
+                t1 = socket.gettime()
                 ok, r = worker(label, ip, port, opt)
-                -- utils.log.debug(label .. 'check msec: ' .. 1000 * (socket.gettime() - t1))
+                t1 = 1000 * (socket.gettime() - t1)
                 -- write fdata        
                 fdata = io.open(worker_data, 'w+')
-                fdata:write(tostring(ok) .. '\0' .. tostring(r))
+                fdata:write(tostring(ok) .. '\n')
+                fdata:write(r .. '\n')
+                fdata:write(t1 .. '\n')
                 fdata:close()
                 os.exit()
             end
 
-            local sw = sleep / 25
             local j = 1000 * opt.timeout / sw
             -- wait for worker to terminate or timeout
             while j > 0 do
@@ -105,17 +109,14 @@ return function(target, opt)
             -- read data
             fdata = io.open(worker_data, 'r')
             if fdata then
-                r = fdata:read('a')
+                ok = utils.tobool(fdata:read('*line'))
+                r = fdata:read('*line')
+                t1 = tonumber(fdata:read('*line'))
                 fdata:close()
-                r = utils.split(r, '\0')
-                if r[1] == 'true' then
+                if ok then
                     -- worker ok
                     ok = true
-                    r = tonumber(r[2])
-                else
-                    -- worker error
-                    ok = false
-                    r = r[2]
+                    r = tonumber(r)
                 end
             else
                 -- worker timeout
@@ -126,11 +127,25 @@ return function(target, opt)
                 s = 1 -- we already waited timeout
             end
 
+            t0 = 1000 * (socket.gettime() - t0)
+
             if ok then
                 v = r
                 err = 0
+                if opt.latencyMetrics then 
+                    loop_count = loop_count + 1
+                    loop_latency = loop_latency + t0
+                    check_latency = check_latency + t1
+                    if loop_count >= opt.latencyMetrics then
+                        -- utils.log.debug(label .. 'loop latency: ' .. loop_latency / loop_count)
+                        -- utils.log.debug(label .. 'check latency: ' .. check_latency / loop_count)
+                        ipc('metrics ' .. target .. ' ' .. loop_latency / loop_count .. ' ' .. check_latency / loop_count) 
+                        loop_count = 0
+                        loop_latency = 0
+                        check_latency = 0
+                    end
+                end
             else
-                r = tostring(r)
                 if v_old ~= -1 then
                     if err < opt.softFail then
                         v = v_old
@@ -150,9 +165,8 @@ return function(target, opt)
                     v_old = v
                 end
             end
-            -- utils.log.debug(label .. 'loop msec: ' .. 1000 * (socket.gettime() - t0))            
 
-            dump_data(v_old, err)
+            save_vars()
             msleep(s)
             os.exit()
         end -- fork
