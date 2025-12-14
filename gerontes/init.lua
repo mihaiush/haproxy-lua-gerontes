@@ -42,8 +42,6 @@ function update_servers(src)
     local sv
     local cflag -- check flag
    
-    utils.log.debug('update_servers: src: ' .. src)
-
     xc = true
     if opt.xCheck then
         xc = core.backends[opt.xCheck]:get_srv_act()
@@ -53,7 +51,7 @@ function update_servers(src)
             xc = true
         end
     end
-    utils.log.debug('update_servers: xcheck: ' .. tostring(xc))
+    utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xc))
 
     for bn,bd in pairs(B) do
         cflag = true
@@ -74,13 +72,13 @@ function update_servers(src)
             if sn ~= mn then
                 sd:set_maint()
                 sd:shut_sess()
-                utils.log.info('update_servers: ' .. bn .. '/' .. sn .. ' DOWN')
+                utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' DOWN')
             end
         end
         for sn,sd in pairs(core.backends[bn].servers) do
             if sn == mn then
                 sd:set_ready()
-                utils.log.info('update_servers: ' .. bn .. '/' .. sn .. ' UP')
+                utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' UP')
             end
         end
     end
