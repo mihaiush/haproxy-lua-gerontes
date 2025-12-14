@@ -1,8 +1,9 @@
 return function(target, opt)
     local label = opt.type .. '/' .. target -- log label
     
-    local main_data = '/dev/shm/main' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
-    local worker_data = '/dev/shm/worker' .. string.gsub(label,'[^%a%d]','_') -- worker output: OK\0R
+    local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
+    local worker_data = main_data .. '_worker' -- pass data from worker
+    main_data = main_data .. '_main' -- pass data between loops
     label = 'servercheck: ' .. label .. ': '
     
     local msleep = require('time.sleep.msleep')
