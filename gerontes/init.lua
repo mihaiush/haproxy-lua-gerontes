@@ -171,5 +171,14 @@ end
 if opt.logColors then
     utils.log.enable_colors()
 end
-utils.log.debug('opt:\n' .. utils.dump(opt))
+-- mask passwords
+mopt = {}
+for ok, ov in pairs(opt) do
+    if ok:lower():find('passw') then
+        mopt[ok] = 'MASKED'
+    else
+        mopt[ok] = ov
+    end
+end
+utils.log.debug('opt:\n' .. utils.dump(mopt))
 
