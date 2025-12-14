@@ -73,6 +73,7 @@ function update_servers(src)
         for sn,sd in pairs(core.backends[bn].servers) do
             if sn ~= mn then
                 sd:set_maint()
+                sd:shut_sess()
                 utils.log.debug('update_servers: ' .. bn .. '/' .. sn .. ' DOWN')
             end
         end
