@@ -12,25 +12,28 @@ RUN \
     apt-get -y update &&\
     apt-get -y install \
         build-essential \
+        cmake \
         git \
         luarocks \
         lua${LUA_VERSION} \
         liblua${LUA_VERSION}-dev \
-        libmariadb-dev-compat
+        libmariadb-dev-compat \
+        libpq-dev
 
-COPY print_r.lua /build/
+COPY static /static/
 
 RUN \
     LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
     LUA_INSTALL="luarocks --lua-version $LUA_VERSION --tree /build install" &&\
-    #$LUA_INSTALL lua-llthreads2 &&\
     $LUA_INSTALL time-sleep &&\
     $LUA_INSTALL luaposix &&\
     $LUA_INSTALL ansicolors &&\
     $LUA_INSTALL string-split &&\
+    $LUA_INSTALL rapidjson &&\
     $LUA_INSTALL redis-lua &&\
     $LUA_INSTALL luasql-mysql MYSQL_INCDIR=/usr/include/mysql &&\
-    cp -v /build/print_r.lua /build/share/lua/$LUA_VERSION/
+    $LUA_INSTALL luasql-postgres PGSQL_INCDIR=/usr/include/postgresql &&\
+    cp -rv /static/* /build/share/lua/$LUA_VERSION/
 
 FROM haproxy:$VERSION
 
@@ -47,7 +50,8 @@ RUN \
     apt-get -y update &&\
     apt-get -y install \
         tini \
-        libmariadb3
+        libmariadb3 \
+        libpq5
 
 USER haproxy
 
