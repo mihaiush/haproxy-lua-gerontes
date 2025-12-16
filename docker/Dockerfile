@@ -6,13 +6,16 @@ USER 0
 
 RUN \
     LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
+    echo "export LUA_VERSION=$LUA_VERSION" >>/environ
+
+RUN \
+    . /environ &&\
     echo 'APT::Install-Recommends "false";' >>/etc/apt/apt.conf &&\
     echo 'APT::Install-Suggests "false";' >>/etc/apt/apt.conf &&\
     export DEBIAN_FRONTEND=noninteractive &&\
     apt-get -y update &&\
     apt-get -y install \
         build-essential \
-        cmake \
         git \
         luarocks \
         lua${LUA_VERSION} \
@@ -20,19 +23,21 @@ RUN \
         libmariadb-dev-compat \
         libpq-dev
 
-COPY static /static/
-
 RUN \
-    LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
+    . /environ &&\
     LUA_INSTALL="luarocks --lua-version $LUA_VERSION --tree /build install" &&\
     $LUA_INSTALL time-sleep &&\
     $LUA_INSTALL luaposix &&\
     $LUA_INSTALL ansicolors &&\
     $LUA_INSTALL string-split &&\
-    $LUA_INSTALL rapidjson &&\
+    $LUA_INSTALL lunajson &&\
     $LUA_INSTALL redis-lua &&\
     $LUA_INSTALL luasql-mysql MYSQL_INCDIR=/usr/include/mysql &&\
-    $LUA_INSTALL luasql-postgres PGSQL_INCDIR=/usr/include/postgresql &&\
+    $LUA_INSTALL luasql-postgres PGSQL_INCDIR=/usr/include/postgresql
+
+COPY static /static/
+RUN \ 
+    . /environ &&\
     cp -rv /static/* /build/share/lua/$LUA_VERSION/
 
 FROM haproxy:$VERSION
