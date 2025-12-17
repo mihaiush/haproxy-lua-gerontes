@@ -13,12 +13,10 @@ return function(applet)
 
     if opt.xCheck then
         x = 'on'
-        v = xcheck
     else
         x = 'off'
-        v = 1
     end
-    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. v .. '\n'
+    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. xcheck .. '\n'
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'

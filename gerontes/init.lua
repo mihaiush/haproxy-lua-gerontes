@@ -41,12 +41,8 @@ function update_servers(src)
     local mv    -- master value
     local sv
    
-    xcheck = 1
     if opt.xCheck then
         xcheck = core.backends[opt.xCheck]:get_srv_act()
-        if xcheck > 0 then
-            xcheck = 1
-        end
     end
     utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xcheck))
 
@@ -55,8 +51,8 @@ function update_servers(src)
         mn = ''
         for _,sn in ipairs(bd.servers) do
             sv = S[sn]
-            if bd.xcheck then
-                sv = sv * xcheck
+            if bd.xcheck and opt.xCheck and xcheck == 0 then
+                sv = 0
             end
             if sv > 0 and (mv == 0 or sv < mv) then
                 mn = sn
