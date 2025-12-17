@@ -1,6 +1,6 @@
 return function(applet)
     local r = ''
-    local v
+    local v,x
 
     if opt.haproxyMetrics then
         local m = core.httpclient():get{url=opt.haproxyMetrics}
@@ -12,8 +12,13 @@ return function(applet)
     r = r .. 'gerontes_info{type="' .. opt.type .. '"} 1\n'
 
     if opt.xCheck then
-        r = r .. 'gerontes_xcheck ' .. xcheck .. '\n'
+        x = 'on'
+        v = xcheck
+    else
+        x = 'off'
+        v = 1
     end
+    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. xcheck .. '\n'
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
