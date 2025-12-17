@@ -18,7 +18,7 @@ return function(applet)
         x = 'off'
         v = 1
     end
-    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. xcheck .. '\n'
+    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. v .. '\n'
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
