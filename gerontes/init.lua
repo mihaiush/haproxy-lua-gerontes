@@ -35,34 +35,30 @@ core.register_service('gerontes_ipc', 'tcp', service_ipc)
 
 -- update servers status
 -- it should be called for every server or xcheck status change
+xcheck = 0
 function update_servers(src)
-    local xc    -- xcheck value 
     local mn    -- master name
     local mv    -- master value
     local sv
-    local cflag -- check flag
    
-    xc = true
+    xcheck = 1
     if opt.xCheck then
-        xc = core.backends[opt.xCheck]:get_srv_act()
-        if xc == 0 then
-            xc = false
-        else
-            xc = true
+        xcheck = core.backends[opt.xCheck]:get_srv_act()
+        if xcheck > 0 then
+            xcheck = 1
         end
     end
-    utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xc))
+    utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xcheck))
 
     for bn,bd in pairs(B) do
-        cflag = true
-        if bd.xcheck and not xc then
-            cflag = false
-        end
         mv = 0
         mn = ''
         for _,sn in ipairs(bd.servers) do
             sv = S[sn]
-            if cflag and sv > 0 and (mv == 0 or sv < mv) then
+            if bd.xcheck then
+                sv = sv * xcheck
+            end
+            if sv > 0 and (mv == 0 or sv < mv) then
                 mn = sn
                 mv = sv
             end
@@ -156,12 +152,12 @@ opt.timeout        = 1     -- check timeout seconds
 opt.softFail       = 5     -- how many times a server check can fail before marking it down
 opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
-opt.debug          = nil
+opt.debug          = false
 opt.xCheck         = nil -- what backend to use for extra check
 opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
-opt.haproxyMetrics = nil -- haproxy metrics url 
-opt.latencyMetrics = nil -- after how many checks to report latency metrics
+opt.haproxyMetrics = false -- haproxy metrics url 
+opt.latencyMetrics = false -- after how many checks to report latency metrics
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()

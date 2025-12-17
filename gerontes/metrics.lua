@@ -11,6 +11,10 @@ return function(applet)
 
     r = r .. 'gerontes_info{type="' .. opt.type .. '"} 1\n'
 
+    if opt.xCheck then
+        r = r .. 'gerontes_xcheck ' .. xcheck .. '\n'
+    end
+
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
         if M['loop_latency'][sn] then
@@ -23,18 +27,17 @@ return function(applet)
 
     for bn,bd in pairs(B) do
         if bd.xcheck then
-            v = '1'
+            x = 'on'
         else
-            v = '0'
+            x = 'off'
         end
-        r = r .. 'gerontes_xcheck{proxy="' .. bn .. '"} ' .. v .. '\n'
         for sn,sd in pairs(core.backends[bn].servers) do
             if sd:get_stats().status == 'no check' then
                 v = '1'
             else
                 v = '0'
             end
-            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '"} ' .. v .. '\n'
+            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. v .. '\n'
         end
     end
 

@@ -85,11 +85,10 @@ utils.parse_args = function(def, args, s1, s2, m)
     for _,a in ipairs(args) do
         a = utils.split(a, s1, 1)
         if a[1] ~= '' then
-            opt[a[1]] = tonumber(a[2]) or a[2]
-            if a[2] == 'yes' or a[2] == 'true' or not a[2] then
+            if not a[2] then
                 opt[a[1]] = true
-            elseif a[2] == 'no' or a[2] == 'false' then 
-                opt[a[1]] = false
+            else
+                opt[a[1]] = tonumber(a[2]) or utils.tobool(a[2]) or a[2]
             end
         end
     end 
@@ -102,8 +101,8 @@ utils.parse_args = function(def, args, s1, s2, m)
 end
 
 utils.tobool = function(s)
-    local s2b = { ["true"]=true, ["false"]=false }
-    return s2b[s]
+    local s2b = { ['true']=true, ['yes']=true, ['on']=true, ['false']=false, ['no']=false, ['off']=false }
+    return s2b[tostring(s):lower()]
 end
 
 return utils
