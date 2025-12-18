@@ -35,7 +35,7 @@ core.register_service('gerontes_ipc', 'tcp', service_ipc)
 
 -- update servers status
 -- it should be called for every server or xcheck status change
-xcheck = 0
+xcheck = 0 -- global xcheck status
 function update_servers(src)
     local mn    -- master name
     local mv    -- master value
@@ -51,7 +51,7 @@ function update_servers(src)
         mn = ''
         for _,sn in ipairs(bd.servers) do
             sv = S[sn]
-            if bd.xcheck and opt.xCheck and xcheck == 0 then
+            if bd.xcheck and xcheck == 0 then
                 sv = 0
             end
             if sv > 0 and (mv == 0 or sv < mv) then
@@ -94,7 +94,8 @@ core.register_init(
                     if opt.xCheck then
                         utils.log.info('backend: ' .. bn .. ': has xcheck')
                     else
-                        utils.log.warning('backend: ' .. bn .. ': has xcheck but opt.xCheck is not defined')
+                        utils.log.warning('backend: ' .. bn .. ': has xcheck but opt.xCheck is not defined, local xcheck disabled')
+                        B[bn]['xcheck'] = false
                     end
                 end
                 B[bn]['servers'] = {}
