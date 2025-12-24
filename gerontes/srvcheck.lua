@@ -69,7 +69,7 @@ return function(target, opt)
     
     msleep (2 * sleep) -- wait for ipc to start
     if ipc('ping') ~= 'ok' then
-        error('ipc check failed')
+        error(ERR_IPC_PING)
     end
 
     os.remove(main_data)    
