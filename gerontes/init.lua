@@ -15,7 +15,6 @@ local function service_ipc(applet)
     local cmd = l[1]
     if cmd == 'ping' then
         r = 'ok'
-        -- utils.log.info('ipc: check ok')
     elseif cmd == 'server' then
         S[l[2]] = tonumber(l[3])
         update_servers('ipc/' .. l[2])

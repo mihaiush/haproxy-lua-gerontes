@@ -60,4 +60,4 @@ RUN \
 
 USER haproxy
 
-ENTRYPOINT ["/usr/bin/tini", "--", "haproxy"]
+ENTRYPOINT ["/usr/bin/tini", "-vw", "--", "haproxy"]
