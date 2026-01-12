@@ -124,22 +124,24 @@ core.register_init(
         end
 
         -- start servercheck forks (blocking code)
-        local srvcheck = require('gerontes.srvcheck')
-        for t,_ in pairs(S) do
-            if posix.fork() == 0 then
-                while true do
-                    ok, r = pcall(srvcheck, t, opt)
-                    if not ok then
-                        if r:find(ERR_IPC_PING) then
-                            utils.log.error('servercheck: ' .. t .. ': ' .. ERR_IPC_PING .. ', verify ipc listener in haproxy config')
-                            posix.kill(MASTER_PID, 15)
-                        else
-                            utils.log.error('servercheck: ' .. t .. ': ' .. r)
+        if TYPE == 'fork' then 
+            local srvcheck = require('gerontes.srvcheck_fork')
+            for t,_ in pairs(S) do
+                if posix.fork() == 0 then
+                    while true do
+                        ok, r = pcall(srvcheck, t, opt)
+                        if not ok then
+                            if r:find(ERR_IPC_PING) then
+                                utils.log.error('servercheck: ' .. t .. ': ' .. ERR_IPC_PING .. ', verify ipc listener in haproxy config')
+                                posix.kill(MASTER_PID, 15)
+                            else
+                                utils.log.error('servercheck: ' .. t .. ': ' .. r)
+                            end
                         end
                     end
+                    -- this branch shoud stop here, not to move after init phase of haproxy
+                    os.exit(1)
                 end
-                -- this branch shoud stop here, not to move after init phase of haproxy
-                os.exit(1)
             end
         end
     end
@@ -184,5 +186,7 @@ utils.log.debug('opt:\n' .. utils.dump(mopt))
 local ok, r = pcall(require, 'gerontes.srvcheck_' .. opt.type)
 if not ok then
     utils.log.error('Error loading servercheck `' .. opt.type .. '`\n' .. r, true)
+else
+    TYPE = r.type
 end
 

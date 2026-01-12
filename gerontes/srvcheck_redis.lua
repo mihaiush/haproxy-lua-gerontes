@@ -1,4 +1,4 @@
-return function(label, ip, port, opt)
+local function worker(label, ip, port, opt)
     return pcall(function()
         local redis = require('redis')
         redis = redis.connect(ip, port)
@@ -7,3 +7,8 @@ return function(label, ip, port, opt)
         return 1000 * (math.floor(info.server_time_usec/1000000) - info.uptime_in_seconds)
     end)
 end
+
+return {
+    ['worker'] = worker,
+    ['type'] = 'fork'
+}

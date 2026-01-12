@@ -58,7 +58,7 @@ return function(target, opt)
     local v = 0
     local ip = utils.split(target,':')[1]
     local port = utils.split(target,':')[2]
-    local worker = require('gerontes.srvcheck_' .. opt.type)
+    local worker = require('gerontes.srvcheck_' .. opt.type).worker
     local r = 0
     local ok = false
     local t0, t1

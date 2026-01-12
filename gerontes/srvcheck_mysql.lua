@@ -1,4 +1,4 @@
-return function(label, ip, port, opt)
+local function worker (label, ip, port, opt)
     return pcall(function()
         local driver = require('luasql.mysql')
         local env = driver.mysql()
@@ -12,3 +12,8 @@ return function(label, ip, port, opt)
         return 1000 * r[1]
     end)
 end
+
+return { 
+    ['worker'] = worker,
+    ['type'] = 'fork'
+}
