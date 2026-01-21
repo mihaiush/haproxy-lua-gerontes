@@ -1,5 +1,5 @@
 return function(applet)
-    local r = ''
+    local r = STATIC_METRICS
     local v,x
 
     if opt.haproxyMetrics then

@@ -164,6 +164,7 @@ opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
 opt.haproxyMetrics = false -- haproxy metrics url 
 opt.latencyMetrics = false -- after how many checks to report latency metrics
+opt.staticMetrics = false -- file with static metrics calculated at startup
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()
@@ -181,7 +182,7 @@ for ok, ov in pairs(opt) do
     end
 end
 utils.log.info('starting with pid ' .. MASTER_PID)
-utils.log.debug('opt:\n' .. utils.dump(mopt))
+utils.log.info('opt:\n' .. utils.dump(mopt))
 
 local ok, r = pcall(require, 'gerontes.srvcheck_' .. opt.type)
 if not ok then
@@ -190,3 +191,9 @@ else
     TYPE = r.type
 end
 
+STATIC_METRICS = ''
+if opt.staticMetrics then
+    for l in io.lines(opt.staticMetrics) do
+        STATIC_METRICS = STATIC_METRICS .. 'gerontes_' .. l .. '\n'
+    end  
+end

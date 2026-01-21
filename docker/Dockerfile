@@ -1,4 +1,4 @@
-ARG VERSION=3.2.9-trixie
+ARG VERSION=3.2.10-trixie
 
 FROM haproxy:$VERSION AS build
 
