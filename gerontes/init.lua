@@ -1,35 +1,8 @@
-posix = require('posix')
 utils = require('gerontes.utils')
 
 -- metrics
 local service_metrics = require('gerontes.metrics')
 core.register_service('gerontes_metrics', 'http', service_metrics)
-
--- receive events from forks
-local function service_ipc(applet)
-    local r
-    local l = applet:getline()
-    l = string.gsub(l, '\n$', '')
-    utils.log.debug('ipc: recive: ' .. l)
-    l = utils.split(l,' ')
-    local cmd = l[1]
-    if cmd == 'ping' then
-        r = 'ok'
-    elseif cmd == 'server' then
-        S[l[2]] = tonumber(l[3])
-        update_servers('ipc/' .. l[2])
-        r = 'ok'
-    elseif cmd == 'metrics' then
-        M['loop_latency'][l[2]] = l[3]
-        M['server_latency'][l[2]] = l[4]
-        r = 'ok'
-    else 
-        r = 'err'
-    end
-    applet:send(r .. '\n')
-end
-core.register_service('gerontes_ipc', 'tcp', service_ipc)
-
 
 -- update servers status
 -- it should be called for every server or xcheck status change
@@ -123,32 +96,11 @@ core.register_init(
             end
         end
 
-        -- start servercheck forks (blocking code)
-        if TYPE == 'fork' then 
-            local srvcheck = require('gerontes.srvcheck_fork')
-            for t,_ in pairs(S) do
-                if posix.fork() == 0 then
-                    while true do
-                        ok, r = pcall(srvcheck, t, opt)
-                        if not ok then
-                            if r:find(ERR_IPC_PING) then
-                                utils.log.error('servercheck: ' .. t .. ': ' .. ERR_IPC_PING .. ', verify ipc listener in haproxy config')
-                                posix.kill(MASTER_PID, 15)
-                            else
-                                utils.log.error('servercheck: ' .. t .. ': ' .. r)
-                            end
-                        end
-                    end
-                    -- this branch shoud stop here, not to move after init phase of haproxy
-                    os.exit(1)
-                end
-            end
-        end
+        -- run server checks     
+        SRVCHECK(S, opt)
+    
     end
 )
-
-MASTER_PID = posix.getpid().pid
-ERR_IPC_PING='ipc check failed'
 
 -- options
 opt = {}
@@ -181,7 +133,6 @@ for ok, ov in pairs(opt) do
         mopt[ok] = ov
     end
 end
-utils.log.info('starting with pid ' .. MASTER_PID)
 utils.log.info('opt:\n' .. utils.dump(mopt))
 
 local ok, r = pcall(require, 'gerontes.srvcheck_' .. opt.type)
@@ -189,7 +140,9 @@ if not ok then
     utils.log.error('Error loading servercheck `' .. opt.type .. '`\n' .. r, true)
 else
     TYPE = r.type
+    SRVCHECK = require('gerontes.srvcheck_' .. TYPE)
 end
+
 
 STATIC_METRICS = ''
 if opt.staticMetrics then

@@ -1,4 +1,49 @@
-return function(target, opt)
+posix = require('posix')
+
+local master_pid = posix.getpid().pid
+local err_ipc_ping='ipc check failed'
+
+-- receive events from forks
+local function service_ipc(applet)
+    local r
+    local l = applet:getline()
+    l = string.gsub(l, '\n$', '')
+    utils.log.debug('ipc: recive: ' .. l)
+    l = utils.split(l,' ')
+    local cmd = l[1]
+    if cmd == 'ping' then
+        r = 'ok'
+    elseif cmd == 'server' then
+        S[l[2]] = tonumber(l[3])
+        update_servers('ipc/' .. l[2])
+        r = 'ok'
+    elseif cmd == 'metrics' then
+        M['loop_latency'][l[2]] = l[3]
+        M['server_latency'][l[2]] = l[4]
+        r = 'ok'
+    else
+        r = 'err'
+    end
+    applet:send(r .. '\n')
+end
+core.register_service('gerontes_ipc', 'tcp', service_ipc)
+
+local function ipc(msg)
+    local socket = posix.sys.socket
+    local sockfd = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM, 0)
+    local r = socket.connect(sockfd, {family = socket.AF_UNIX, path = opt.ipcSock})
+    if r == 0 then
+        socket.send(sockfd, msg .. "\n")
+        r = socket.recv(sockfd, 1024)
+        socket.shutdown(sockfd, socket.SHUT_RDWR)
+    else
+        r = 'err'
+    end
+    return string.gsub(r, '\n$', '')
+end
+
+
+local function server_worker(target, opt)
     local label = opt.type .. '/' .. target -- log label
     
     local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
@@ -20,7 +65,7 @@ return function(target, opt)
     local loop_count = 0
     local loop_latency = 0
     local check_latency = 0    
-    function save_vars(...)
+    local function save_vars(...)
         local f = io.open(main_data, 'w+')
         f:write(v_old .. '\n')
         f:write(err .. '\n')
@@ -29,7 +74,7 @@ return function(target, opt)
         f:write(check_latency .. '\n')
         f:close()
     end
-    function load_vars()
+    local function load_vars()
         local f = io.open(main_data, 'r')
         v_old = tonumber(f:read('*line'))
         err = tonumber(f:read('*line'))
@@ -39,20 +84,6 @@ return function(target, opt)
         f:close()
     end
     
-    local function ipc(msg)
-        local socket = posix.sys.socket
-        local sockfd = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM, 0)
-        local r = socket.connect(sockfd, {family = socket.AF_UNIX, path = opt.ipcSock})
-        if r == 0 then
-	        socket.send(sockfd, msg .. "\n")
-            r = socket.recv(sockfd, 1024)
-	        socket.shutdown(sockfd, socket.SHUT_RDWR)
-        else
-            r = 'err'
-        end
-        return string.gsub(r, '\n$', '')
-    end
-
     local sleep = 1000 * opt.sleep
     local s
     local v = 0
@@ -67,9 +98,9 @@ return function(target, opt)
         sw = 10
     end
     
-    msleep (2 * sleep) -- wait for ipc to start
+    msleep (2 * sleep) -- wait for haproxy init phase to finish and ipc to start
     if ipc('ping') ~= 'ok' then
-        error(ERR_IPC_PING)
+        error(err_ipc_ping)
     end
 
     os.remove(main_data)    
@@ -173,5 +204,25 @@ return function(target, opt)
         end -- fork
         posix.wait()
     end -- while
+end
+
+return function(S, opt)
+    for t,_ in pairs(S) do
+        if posix.fork() == 0 then
+            while true do
+                ok, r = pcall(server_worker, t, opt)
+                if not ok then
+                    if r:find(err_ipc_ping) then
+                        utils.log.error('servercheck: ' .. t .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
+                        posix.kill(master_pid, 15)
+                    else
+                        utils.log.error('servercheck: ' .. t .. ': ' .. r)
+                    end
+                end
+            end
+            -- this branch shoud stop here, not to move after init phase of haproxy
+            os.exit(1)
+        end
+    end
 end
 
