@@ -96,9 +96,10 @@ core.register_init(
             end
         end
 
-        -- run server checks     
-        SRVCHECK(S, opt)
-    
+        -- run server checks    
+        for t,_ in pairs(S) do 
+            srvcheck(t, opt)
+        end
     end
 )
 
@@ -140,7 +141,7 @@ if not ok then
     utils.log.error('Error loading servercheck `' .. opt.type .. '`\n' .. r, true)
 else
     TYPE = r.type
-    SRVCHECK = require('gerontes.srvcheck_' .. TYPE)
+    srvcheck = require('gerontes.srvcheck_' .. r.type)
 end
 
 

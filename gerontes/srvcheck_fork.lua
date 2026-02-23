@@ -206,23 +206,21 @@ local function server_worker(target, opt)
     end -- while
 end
 
-return function(S, opt)
-    for t,_ in pairs(S) do
-        if posix.fork() == 0 then
-            while true do
-                ok, r = pcall(server_worker, t, opt)
-                if not ok then
-                    if r:find(err_ipc_ping) then
-                        utils.log.error('servercheck: ' .. t .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
-                        posix.kill(master_pid, 15)
-                    else
-                        utils.log.error('servercheck: ' .. t .. ': ' .. r)
-                    end
+return function(target, opt)
+    if posix.fork() == 0 then
+        while true do
+            ok, r = pcall(server_worker, target, opt)
+            if not ok then
+                if r:find(err_ipc_ping) then
+                    utils.log.error('servercheck: ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
+                    posix.kill(master_pid, 15)
+                else
+                    utils.log.error('servercheck: ' .. target .. ': ' .. r)
                 end
             end
-            -- this branch shoud stop here, not to move after init phase of haproxy
-            os.exit(1)
         end
+        -- this branch shoud stop here, not to move after init phase of haproxy
+        os.exit(1)
     end
 end
 
