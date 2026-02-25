@@ -98,9 +98,9 @@ core.register_init(
             end
         end
 
-        -- run server checks    
+        -- run check controllers    
         for t,_ in pairs(S) do 
-            srvcheck(t, opt)
+            checkctrl(t, opt)
         end
     end
 )
@@ -142,8 +142,7 @@ local ok, r = pcall(require, 'gerontes.srvcheck_' .. opt.type)
 if not ok then
     utils.log.error('Error loading servercheck `' .. opt.type .. '`\n' .. r, true)
 else
-    TYPE = r.type
-    srvcheck = require('gerontes.srvcheck_' .. r.type)
+    checkctrl = require('gerontes.checkctrl_' .. r.type)
 end
 
 
