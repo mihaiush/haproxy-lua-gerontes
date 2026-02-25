@@ -59,7 +59,7 @@ core.register_init(
             _,_,_,bo = bn:find('(.+)__gerontes_?(.*)')
             if bo then
                 B[bn] = {}
-                B[bn].value = -1
+                B[bn].value = 0
                 bo = utils.parse_args({xcheck=false}, bo, ':', '_')
                 utils.log.debug('backend: ' .. bn .. ': opt:\n' .. utils.dump(bo))
                 B[bn]['xcheck'] = bo.xcheck
