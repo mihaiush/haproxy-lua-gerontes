@@ -30,6 +30,7 @@ function update_servers(src)
                 mv = sv
             end
         end
+        bd.value = mv
         -- first DOWN then UP, no 2 servers can be up
         for sn,sd in pairs(core.backends[bn].servers) do
             if sn ~= mn then
@@ -58,6 +59,7 @@ core.register_init(
             _,_,_,bo = bn:find('(.+)__gerontes_?(.*)')
             if bo then
                 B[bn] = {}
+                B[bn].value = -1
                 bo = utils.parse_args({xcheck=false}, bo, ':', '_')
                 utils.log.debug('backend: ' .. bn .. ': opt:\n' .. utils.dump(bo))
                 B[bn]['xcheck'] = bo.xcheck

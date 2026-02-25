@@ -1,4 +1,4 @@
-return function(applet)
+local function metrics()
     local r = STATIC_METRICS
     local v,x
 
@@ -34,6 +34,7 @@ return function(applet)
         else
             x = 'off'
         end
+        r = r .. 'gerontes_proxy_value{proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. bd.value .. '\n'
         for sn,sd in pairs(core.backends[bn].servers) do
             if sd:get_stats().status == 'no check' then
                 v = '1'
@@ -42,6 +43,31 @@ return function(applet)
             end
             r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. v .. '\n'
         end
+    end
+
+    return r
+end
+
+local function query(qs)
+    r = ''
+    local qs = utils.parse_args({ ['t']='_', ['k']='_'}, qs, '=', '&')
+    -- type
+    if qs.t == 'p' then
+        -- proxy (backend)
+        r = tostring(B[qs.k].value)
+    elseif qs.t == 's' then
+        -- server
+        r = tostring(S[qs.k])
+    end
+    return r
+end
+
+return function(applet)
+
+    if applet.qs == nil or applet.qs == '' then
+        r = metrics()
+    else
+        r = query(applet.qs)
     end
 
     applet:set_status(200)
