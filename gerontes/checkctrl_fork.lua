@@ -43,7 +43,7 @@ local function ipc(msg)
 end
 
 
-local function server_worker(target, opt)
+local function server_worker(target, srvtype, opt)
     local label = opt.type .. '/' .. target -- log label
     
     local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
@@ -87,9 +87,7 @@ local function server_worker(target, opt)
     local sleep = 1000 * opt.sleep
     local s
     local v = 0
-    local ip = utils.split(target,':')[1]
-    local port = utils.split(target,':')[2]
-    local worker = require('gerontes.srvcheck_' .. opt.type).worker
+    local worker = require('gerontes.srvcheck_' .. srvtype).worker
     local r = 0
     local ok = false
     local t0, t1
@@ -118,7 +116,7 @@ local function server_worker(target, opt)
             local pid = posix.fork()
             if pid == 0 then
                 t1 = socket.gettime()
-                ok, r = worker(label, ip, port, opt)
+                ok, r = worker(label, target, opt)
                 t1 = 1000 * (socket.gettime() - t1)
                 -- write fdata        
                 fdata = io.open(worker_data, 'w+')
@@ -206,10 +204,10 @@ local function server_worker(target, opt)
     end -- while
 end
 
-return function(target, opt)
+return function(target, srvtype, opt)
     if posix.fork() == 0 then
         while true do
-            ok, r = pcall(server_worker, target, opt)
+            ok, r = pcall(server_worker, target, srvtype, opt)
             if not ok then
                 if r:find(err_ipc_ping) then
                     utils.log.error('servercheck: ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')

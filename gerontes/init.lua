@@ -99,8 +99,15 @@ core.register_init(
         end
 
         -- run check controllers    
-        for t,_ in pairs(S) do 
-            checkctrl(t, opt)
+        for t,_ in pairs(S) do
+            local precalc = utils.split(t,':',1)[1] == 'p'
+            print_r(precalc)
+            if precalc then
+                local pctrl = require('gerontes.checkctrl_task')
+                pctrl(t, 'precalc', opt)
+            else
+                checkctrl(t, opt.type, opt)
+            end
         end
     end
 )
@@ -119,7 +126,7 @@ opt.mysqlUser      = nil
 opt.mysqlPassword  = nil
 opt.haproxyMetrics = false -- haproxy metrics url 
 opt.latencyMetrics = false -- after how many checks to report latency metrics
-opt.staticMetrics = false -- file with static metrics calculated at startup
+opt.staticMetrics  = false -- file with static metrics calculated at startup
 opt = utils.parse_args(opt, {...})
 if opt.debug then
     utils.log.enable_debug()

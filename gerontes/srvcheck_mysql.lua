@@ -1,4 +1,6 @@
-local function worker (label, ip, port, opt)
+local function worker (label, target, opt)
+    local ip = utils.split(target,':')[1]
+    local port = utils.split(target,':')[2]
     return pcall(function()
         local driver = require('luasql.mysql')
         local env = driver.mysql()
