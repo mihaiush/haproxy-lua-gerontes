@@ -2,16 +2,16 @@ local function metrics()
     local r = STATIC_METRICS
     local v,x
 
-    if opt.haproxyMetrics then
-        local m = core.httpclient():get{url=opt.haproxyMetrics}
+    if OPT.haproxyMetrics then
+        local m = core.httpclient():get{url=OPT.haproxyMetrics}
         if m.status == 200 then
             r = r .. '\n' .. m.body .. '\n'
         end
     end
 
-    r = r .. 'gerontes_info{type="' .. opt.type .. '"} 1\n'
+    r = r .. 'gerontes_info{type="' .. OPT.type .. '"} 1\n'
 
-    if opt.xCheck then
+    if OPT.xCheck then
         x = 'on'
     else
         x = 'off'

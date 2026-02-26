@@ -12,8 +12,8 @@ function update_servers(src)
     local mv    -- master value
     local sv
    
-    if opt.xCheck then
-        xcheck = core.backends[opt.xCheck]:get_srv_act()
+    if OPT.xCheck then
+        xcheck = core.backends[OPT.xCheck]:get_srv_act()
     end
     utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xcheck))
 
@@ -64,10 +64,10 @@ core.register_init(
                 utils.log.debug('backend: ' .. bn .. ': opt:\n' .. utils.dump(bo))
                 B[bn]['xcheck'] = bo.xcheck
                 if bo.xcheck then
-                    if opt.xCheck then
+                    if OPT.xCheck then
                         utils.log.info('backend: ' .. bn .. ': has xcheck')
                     else
-                        utils.log.warning('backend: ' .. bn .. ': has xcheck but opt.xCheck is not defined, drop xcheck')
+                        utils.log.warning('backend: ' .. bn .. ': has xcheck but OPT.xCheck is not defined, drop xcheck')
                         B[bn]['xcheck'] = false
                     end
                 end
@@ -84,11 +84,11 @@ core.register_init(
         utils.log.debug('servers:\n' .. utils.dump(S))
 
         -- events on xcheck servers
-        if opt.xCheck then
-            if not core.backends[opt.xCheck] then
-                utils.log.error('backend `' .. opt.xCheck .. '` not found, verify haproxy config', true)
+        if OPT.xCheck then
+            if not core.backends[OPT.xCheck] then
+                utils.log.error('backend `' .. OPT.xCheck .. '` not found, verify haproxy config', true)
             end
-            for sn,sd in pairs(core.backends[opt.xCheck].servers) do
+            for sn,sd in pairs(core.backends[OPT.xCheck].servers) do
                 sd:event_sub(
                     {"SERVER_UP", "SERVER_DOWN"}, 
                     function()
@@ -101,43 +101,43 @@ core.register_init(
         -- run check controllers    
         for t,_ in pairs(S) do
             local precalc = utils.split(t,':',1)[1] == 'p'
-            print_r(precalc)
             if precalc then
                 local pctrl = require('gerontes.checkctrl_task')
-                pctrl(t, 'precalc', opt)
+                pctrl(t, 'precalc')
             else
-                checkctrl(t, opt.type, opt)
+                checkctrl(t, OPT.type)
             end
         end
     end
 )
 
 -- options
-opt = {}
-opt.type           = '_'   -- server type
-opt.sleep          = 0.3   -- seconds between 2 checks
-opt.timeout        = 1     -- check timeout seconds
-opt.softFail       = 5     -- how many times a server check can fail before marking it down
-opt.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
-opt.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
-opt.debug          = false
-opt.xCheck         = nil -- what backend to use for extra check
-opt.mysqlUser      = nil
-opt.mysqlPassword  = nil
-opt.haproxyMetrics = false -- haproxy metrics url 
-opt.latencyMetrics = false -- after how many checks to report latency metrics
-opt.staticMetrics  = false -- file with static metrics calculated at startup
-opt = utils.parse_args(opt, {...})
-if opt.debug then
+OPT = {}
+OPT.type           = '_'   -- server type
+OPT.sleep          = 0.3   -- seconds between 2 checks
+OPT.timeout        = 1     -- check timeout seconds
+OPT.softFail       = 5     -- how many times a server check can fail before marking it down
+OPT.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
+OPT.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
+OPT.debug          = false
+OPT.xCheck         = nil -- what backend to use for extra check
+OPT.mysqlUser      = nil
+OPT.mysqlPassword  = nil
+OPT.redisAuth      = nil
+OPT.haproxyMetrics = false -- haproxy metrics url 
+OPT.latencyMetrics = false -- after how many checks to report latency metrics
+OPT.staticMetrics  = false -- file with static metrics calculated at startup
+OPT = utils.parse_args(OPT, {...})
+if OPT.debug then
     utils.log.enable_debug()
 end
-if opt.logColors then
+if OPT.logColors then
     utils.log.enable_colors()
 end
 -- mask passwords
 mopt = {}
-for ok, ov in pairs(opt) do
-    if ok:lower():find('passw') then
+for ok, ov in pairs(OPT) do
+    if ok:lower():find('passw') or ok:lower():find('auth') then
         mopt[ok] = 'MASKED'
     else
         mopt[ok] = ov
@@ -145,17 +145,17 @@ for ok, ov in pairs(opt) do
 end
 utils.log.info('opt:\n' .. utils.dump(mopt))
 
-local ok, r = pcall(require, 'gerontes.srvcheck_' .. opt.type)
+local ok, r = pcall(require, 'gerontes.srvcheck_' .. OPT.type)
 if not ok then
-    utils.log.error('Error loading servercheck `' .. opt.type .. '`\n' .. r, true)
+    utils.log.error('Error loading servercheck `' .. OPT.type .. '`\n' .. r, true)
 else
     checkctrl = require('gerontes.checkctrl_' .. r.type)
 end
 
 
 STATIC_METRICS = ''
-if opt.staticMetrics then
-    for l in io.lines(opt.staticMetrics) do
+if OPT.staticMetrics then
+    for l in io.lines(OPT.staticMetrics) do
         STATIC_METRICS = STATIC_METRICS .. 'gerontes_' .. l .. '\n'
     end  
 end
