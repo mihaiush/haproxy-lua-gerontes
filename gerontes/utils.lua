@@ -105,4 +105,12 @@ utils.tobool = function(s)
     return s2b[tostring(s):lower()]
 end
 
+utils.strip_type = function(s)
+    s = utils.split(s,'::',1)
+    if s[2] then
+        return s[2]
+    end
+    return s[1]
+end
+
 return utils

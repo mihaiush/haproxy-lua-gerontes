@@ -4,6 +4,31 @@ utils = require('gerontes.utils')
 local service_metrics = require('gerontes.metrics')
 core.register_service('gerontes_metrics', 'http', service_metrics)
 
+-- receive events from forks
+local function service_ipc(applet)
+    local r
+    local l = applet:getline()
+    l = string.gsub(l, '\n$', '')
+    utils.log.debug('ipc: recive: ' .. l)
+    l = utils.split(l,' ')
+    local cmd = l[1]
+    if cmd == 'ping' then
+        r = 'ok'
+    elseif cmd == 'server' then
+        S[l[2]] = tonumber(l[3])
+        update_servers('ipc/' .. l[2])
+        r = 'ok'
+    elseif cmd == 'metrics' then
+        M['loop_latency'][l[2]] = l[3]
+        M['server_latency'][l[2]] = l[4]
+        r = 'ok'
+    else
+        r = 'err'
+    end
+    applet:send(r .. '\n')
+end
+core.register_service('gerontes_ipc', 'tcp', service_ipc)
+
 -- update servers status
 -- it should be called for every server or xcheck status change
 xcheck = 0 -- global xcheck status
@@ -99,14 +124,16 @@ core.register_init(
         end
 
         -- run check controllers    
-        for t,_ in pairs(S) do
-            local precalc = utils.split(t,':',1)[1] == 'p'
-            if precalc then
-                local pctrl = require('gerontes.checkctrl_task')
-                pctrl(t, 'precalc')
+        for target,_ in pairs(S) do
+            local tp = utils.split(target,'::',1)
+            if tp[2] and tp[1] ~= OPT.type then
+                tp = tp[1]
             else
-                checkctrl(t, OPT.type)
+                tp = OPT.type
             end
+            local srvcheck = require('gerontes.srvcheck_' .. tp)
+            local checkctrl = require('gerontes.checkctrl_' .. srvcheck.type)
+            checkctrl(target, tp)
         end
     end
 )
@@ -144,14 +171,6 @@ for ok, ov in pairs(OPT) do
     end
 end
 utils.log.info('opt:\n' .. utils.dump(mopt))
-
-local ok, r = pcall(require, 'gerontes.srvcheck_' .. OPT.type)
-if not ok then
-    utils.log.error('Error loading servercheck `' .. OPT.type .. '`\n' .. r, true)
-else
-    checkctrl = require('gerontes.checkctrl_' .. r.type)
-end
-
 
 STATIC_METRICS = ''
 if OPT.staticMetrics then

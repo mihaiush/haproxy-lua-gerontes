@@ -3,31 +3,6 @@ posix = require('posix')
 local master_pid = posix.getpid().pid
 local err_ipc_ping='ipc check failed'
 
--- receive events from forks
-local function service_ipc(applet)
-    local r
-    local l = applet:getline()
-    l = string.gsub(l, '\n$', '')
-    utils.log.debug('ipc: recive: ' .. l)
-    l = utils.split(l,' ')
-    local cmd = l[1]
-    if cmd == 'ping' then
-        r = 'ok'
-    elseif cmd == 'server' then
-        S[l[2]] = tonumber(l[3])
-        update_servers('ipc/' .. l[2])
-        r = 'ok'
-    elseif cmd == 'metrics' then
-        M['loop_latency'][l[2]] = l[3]
-        M['server_latency'][l[2]] = l[4]
-        r = 'ok'
-    else
-        r = 'err'
-    end
-    applet:send(r .. '\n')
-end
-core.register_service('gerontes_ipc', 'tcp', service_ipc)
-
 local function ipc(msg)
     local socket = posix.sys.socket
     local sockfd = socket.socket (socket.AF_UNIX, socket.SOCK_STREAM, 0)
@@ -44,7 +19,7 @@ end
 
 
 local function server_worker(target, srvtype)
-    local label = OPT.type .. '/' .. target -- log label
+    local label = srvtype .. '/' .. target -- log label
     
     local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
     local worker_data = main_data .. '_worker' -- pass data from worker
@@ -116,7 +91,7 @@ local function server_worker(target, srvtype)
             local pid = posix.fork()
             if pid == 0 then
                 t1 = socket.gettime()
-                ok, r = worker(label, target)
+                ok, r = worker(label, utils.strip_type(target))
                 t1 = 1000 * (socket.gettime() - t1)
                 -- write fdata        
                 fdata = io.open(worker_data, 'w+')
