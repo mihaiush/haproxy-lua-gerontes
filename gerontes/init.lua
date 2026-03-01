@@ -132,8 +132,7 @@ core.register_init(
                 tp = OPT.type
             end
             local srvcheck = require('gerontes.srvcheck_' .. tp)
-            local checkctrl = require('gerontes.checkctrl_' .. srvcheck.type)
-            checkctrl(target, tp)
+            srvcheck(target)
         end
     end
 )

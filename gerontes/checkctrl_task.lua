@@ -3,7 +3,7 @@ local function now()
     return t.sec + t.usec/1000000
 end
 
-local function server_worker(target, srvtype)
+local function server_worker(srvtype, target, worker)
     local label = srvtype .. '/' .. target -- log label
     label = 'servercheck: ' .. label .. ': '
     
@@ -21,7 +21,6 @@ local function server_worker(target, srvtype)
     local sleep = 1000 * OPT.sleep
     local s
     local v = 0
-    local worker = require('gerontes.srvcheck_' .. srvtype).worker
     local r = 0
     local ok = false
     local t0, t1
@@ -71,7 +70,7 @@ local function server_worker(target, srvtype)
     end -- while
 end
 
-return function(target, srvtype)
-    core.register_task(server_worker, target, srvtype)
+return function(srvtype, target, worker)
+    core.register_task(server_worker, srvtype, target, worker)
 end
 
