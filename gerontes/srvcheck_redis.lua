@@ -13,7 +13,9 @@ local function worker(label, target)
     end)
 end
 
-return {
-    ['worker'] = worker,
-    ['type'] = 'fork'
-}
+local ctrl = require('gerontes.checkctrl_fork')
+
+return function(target)
+    ctrl('redis', target, worker)
+end
+
