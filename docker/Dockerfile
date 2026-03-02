@@ -62,6 +62,6 @@ RUN \
     userdel haproxy ;\
     useradd -u 1000 -d /tmp haproxy
 
+VOLUME /tmp
 USER 1000
-
 ENTRYPOINT ["/usr/bin/tini", "-vw", "--", "haproxy"]
