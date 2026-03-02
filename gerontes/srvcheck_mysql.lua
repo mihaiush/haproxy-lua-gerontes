@@ -1,7 +1,9 @@
-local f = io.open(os.getenv('HOME') .. '/my.cnf', 'w+')
+local f = io.open(os.getenv('HOME') .. '/.my.cnf', 'w+')
 if f then
     f:write('[client]\n')
-    f:write('connect-timeout=' .. math.ceil(OPT.timeout))
+    f:write('connect-timeout = ' .. math.ceil(OPT.timeout) .. '\n')
+    -- f:write('ssl = true\n')
+    -- f:write('ssl-ca = /dev/shm/ca.pem\n')
     f:close()
     to_flag = true
 else
@@ -29,5 +31,5 @@ end
 local ctrl = require('gerontes.checkctrl_fork')
 
 return function(target)
-    ctrl('mysql', target, worker, to_flag)
+    ctrl('mysql', target, worker, false) -- to_flag), can't make it work
 end
