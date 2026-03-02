@@ -58,6 +58,10 @@ RUN \
         libmariadb3 \
         libpq5
 
-USER haproxy
+RUN \
+    userdel haproxy ;\
+    useradd -u 1000 -d /tmp haproxy
+
+USER 1000
 
 ENTRYPOINT ["/usr/bin/tini", "-vw", "--", "haproxy"]
