@@ -1,3 +1,14 @@
+local f = io.open(os.getenv('HOME') .. '/my.cnf', 'w+')
+if f then
+    f:write('[client]\n')
+    f:write('connect-timeout=' .. math.ceil(OPT.timeout))
+    f:close()
+    to_flag = true
+else
+    utils.log.warning("servercheck: mysql: can't create my.cnf")
+    to_flag = false
+end
+
 local function worker (label, target)
     local ip = utils.split(target,':')[1]
     local port = utils.split(target,':')[2]
@@ -18,5 +29,5 @@ end
 local ctrl = require('gerontes.checkctrl_fork')
 
 return function(target)
-    ctrl('mysql', target, worker)
+    ctrl('mysql', target, worker, to_flag)
 end

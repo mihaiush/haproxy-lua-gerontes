@@ -18,7 +18,7 @@ local function ipc(msg)
 end
 
 
-local function server_worker(srvtype, target, worker)
+local function server_worker(srvtype, target, worker, to_flag)
     local label = srvtype .. '/' .. target -- log label
     
     local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
@@ -84,51 +84,57 @@ local function server_worker(srvtype, target, worker)
             load_vars()
             s = sleep
 
-            -- we fork in order to implement timeout
-            os.remove(worker_data)
-            local fdata
-            local pid = posix.fork()
-            if pid == 0 then
+            if to_flag then
                 t1 = socket.gettime()
                 ok, r = worker(label, utils.strip_type(target))
                 t1 = 1000 * (socket.gettime() - t1)
-                -- write fdata        
-                fdata = io.open(worker_data, 'w+')
-                fdata:write(tostring(ok) .. '\n')
-                fdata:write(r .. '\n')
-                fdata:write(t1 .. '\n')
-                fdata:close()
-                os.exit()
-            end
-
-            local j = 1000 * OPT.timeout / sw
-            -- wait for worker to terminate or timeout
-            while j > 0 do
-                msleep(sw)
-                if posix.wait(-1, posix.WNOHANG) ~= 0 then
-                    break
-                end
-                j = j - 1
-            end
-            -- read data
-            fdata = io.open(worker_data, 'r')
-            if fdata then
-                ok = utils.tobool(fdata:read('*line'))
-                r = fdata:read('*line')
-                t1 = tonumber(fdata:read('*line'))
-                fdata:close()
-                if ok then
-                    -- worker ok
-                    ok = true
-                    r = tonumber(r)
-                end
             else
-                -- worker timeout
-                ok = false
-                r = 'timeout'
-                -- kill worker
-                posix.kill(pid, 9)
-                s = 1 -- we already waited timeout
+                -- we fork in order to implement timeout
+                os.remove(worker_data)
+                local fdata
+                local pid = posix.fork()
+                if pid == 0 then
+                    t1 = socket.gettime()
+                    ok, r = worker(label, utils.strip_type(target))
+                    t1 = 1000 * (socket.gettime() - t1)
+                    -- write fdata        
+                    fdata = io.open(worker_data, 'w+')
+                    fdata:write(tostring(ok) .. '\n')
+                    fdata:write(r .. '\n')
+                    fdata:write(t1 .. '\n')
+                    fdata:close()
+                    os.exit()
+                end
+
+                local j = 1000 * OPT.timeout / sw
+                -- wait for worker to terminate or timeout
+                while j > 0 do
+                    msleep(sw)
+                    if posix.wait(-1, posix.WNOHANG) ~= 0 then
+                        break
+                    end
+                    j = j - 1
+                end
+                -- read data
+                fdata = io.open(worker_data, 'r')
+                if fdata then
+                    ok = utils.tobool(fdata:read('*line'))
+                    r = fdata:read('*line')
+                    t1 = tonumber(fdata:read('*line'))
+                    fdata:close()
+                    if ok then
+                        -- worker ok
+                        ok = true
+                        r = tonumber(r)
+                    end
+                else
+                    -- worker timeout
+                    ok = false
+                    r = 'timeout'
+                    -- kill worker
+                    posix.kill(pid, 9)
+                    s = 1 -- we already waited timeout
+                end
             end
 
             t0 = 1000 * (socket.gettime() - t0)
@@ -178,16 +184,17 @@ local function server_worker(srvtype, target, worker)
     end -- while
 end
 
-return function(srvtype, target, worker)
+return function(srvtype, target, worker, to_flag)
+    utils.log.debug('servercheck: ' .. srvtype .. ': ' .. target .. ': timeout: ' .. tostring(to_flag))
     if posix.fork() == 0 then
         while true do
-            ok, r = pcall(server_worker, srvtype, target, worker)
+            ok, r = pcall(server_worker, srvtype, target, worker, to_flag)
             if not ok then
                 if r:find(err_ipc_ping) then
-                    utils.log.error('servercheck: ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
+                    utils.log.error('servercheck: ' .. srvtype .. ': ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
                     posix.kill(master_pid, 15)
                 else
-                    utils.log.error('servercheck: ' .. target .. ': ' .. r)
+                    utils.log.error('servercheck: ' .. srvtype .. ': ' .. target .. ': ' .. r)
                 end
             end
         end
