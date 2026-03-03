@@ -11,8 +11,10 @@ else
 end
 
 local function worker (label, target)
-    local ip = utils.split(target,':')[1]
-    local port = utils.split(target,':')[2]
+    target = utils.split(target,':')
+    local ip = target[1]
+    local port = target[2]
+    
     return pcall(function()
         local driver = require('luasql.mysql')
         local env = driver.mysql()
