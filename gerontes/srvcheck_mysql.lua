@@ -2,7 +2,6 @@ local f = io.open(os.getenv('HOME') .. '/.my.cnf', 'w+')
 if f then
     f:write('[client]\n')
     f:write('connect-timeout = ' .. math.ceil(OPT.timeout) .. '\n')
-    -- f:write('ssl = true\n')
     -- f:write('ssl-ca = /dev/shm/ca.pem\n')
     f:close()
     to_flag = true
@@ -17,7 +16,7 @@ local function worker (label, target)
     return pcall(function()
         local driver = require('luasql.mysql')
         local env = driver.mysql()
-        local conn = assert(env:connect('information_schema', OPT.mysqlUser, OPT.mysqlPassword, ip, port), "Connection refused")
+        local conn = assert(env:connect('information_schema', OPT.mysqlUser, OPT.mysqlPassword, ip, port), "Connect failed")
         local cur = conn:execute("select (unix_timestamp() - VARIABLE_VALUE) from global_status where VARIABLE_NAME='UPTIME'")
         local r = cur:fetch({})
         cur:close()
@@ -31,5 +30,5 @@ end
 local ctrl = require('gerontes.checkctrl_fork')
 
 return function(target)
-    ctrl('mysql', target, worker, false) -- to_flag), can't make it work
+    ctrl('mysql', target, worker, to_flag)
 end
