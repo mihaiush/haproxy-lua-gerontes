@@ -6,7 +6,8 @@ USER 0
 
 RUN \
     LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
-    echo "export LUA_VERSION=$LUA_VERSION" >>/environ
+    echo "export LUA_VERSION=$LUA_VERSION" >>/environ &&\
+    echo "LUAROCKS='luarocks --lua-version $LUA_VERSION --tree /build'" >>/environ
 
 RUN \
     . /environ &&\
@@ -21,19 +22,25 @@ RUN \
         lua${LUA_VERSION} \
         liblua${LUA_VERSION}-dev \
         libmariadb-dev-compat \
-        libpq-dev
+        libpq-dev \
+        libssl-dev
 
 RUN \
     . /environ &&\
-    LUA_INSTALL="luarocks --lua-version $LUA_VERSION --tree /build install" &&\
-    $LUA_INSTALL time-sleep &&\
-    $LUA_INSTALL luaposix &&\
-    $LUA_INSTALL ansicolors &&\
-    $LUA_INSTALL string-split &&\
-    $LUA_INSTALL lunajson &&\
-    $LUA_INSTALL redis-lua &&\
-    $LUA_INSTALL luasql-mysql MYSQL_INCDIR=/usr/include/mysql &&\
-    $LUA_INSTALL luasql-postgres PGSQL_INCDIR=/usr/include/postgresql
+    $LUAROCKS install time-sleep &&\
+    $LUAROCKS install luaposix &&\
+    $LUAROCKS install ansicolors &&\
+    $LUAROCKS install string-split &&\
+    $LUAROCKS install lunajson &&\
+    $LUAROCKS install redis-lua &&\
+    $LUAROCKS install luasql-postgres PGSQL_INCDIR=/usr/include/postgresql
+
+RUN \
+    . /environ &&\
+    cd /tmp &&\
+    git clone https://github.com/mihaiush/luasql.git &&\
+    cd luasql &&\
+    $LUAROCKS make rockspec/luasql-mysql-2.8.0-1.rockspec MYSQL_INCDIR=/usr/include/mysql
 
 COPY static /static/
 RUN \ 
@@ -48,7 +55,6 @@ COPY --from=build /build/lib/lua /usr/local/lib/lua/
 COPY --from=build /build/share/lua /usr/local/share/lua/
 
 RUN \
-    LUA_VERSION=$(haproxy -vv | awk '/: Lua /{print $NF}' | awk -F'.' '{print $1"."$2}') &&\
     echo 'APT::Install-Recommends "false";' >>/etc/apt/apt.conf &&\
     echo 'APT::Install-Suggests "false";' >>/etc/apt/apt.conf &&\
     export DEBIAN_FRONTEND=noninteractive &&\
@@ -56,7 +62,8 @@ RUN \
     apt-get -y install \
         tini \
         libmariadb3 \
-        libpq5
+        libpq5 \ 
+        openssl
 
 RUN \
     userdel haproxy ;\
