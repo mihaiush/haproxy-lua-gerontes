@@ -80,7 +80,7 @@ return function(applet)
         r = 'Empty response'
     end
 
-    applet:set_status(200)
+    applet:set_status(rc)
     applet:add_header("content-length", string.len(r))
     applet:add_header("content-type", "text/plain")
     applet:start_response()
