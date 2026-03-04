@@ -7,6 +7,7 @@ local function metrics()
         if m.status == 200 then
             r = r .. '\n' .. m.body .. '\n'
         end
+        m = nil
     end
 
     r = r .. 'gerontes_info{type="' .. OPT.type .. '"} 1\n'

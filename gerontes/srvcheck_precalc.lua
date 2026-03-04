@@ -7,6 +7,7 @@ local function worker(label, target)
     if r.status == 200 then
         return true, tonumber(r.body)
     end
+    r = nil
     return false, r.status .. '/' .. r.reason
 end
 
