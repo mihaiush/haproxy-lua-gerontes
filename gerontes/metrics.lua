@@ -65,11 +65,19 @@ end
 
 return function(applet)
     local r
+    local rc
 
     if applet.qs == nil or applet.qs == '' then
         r = metrics()
     else
         r = query(applet.qs)
+    end
+
+    if r then
+        rc = 200
+    else
+        rc = 500
+        r = 'Empty response'
     end
 
     applet:set_status(200)
