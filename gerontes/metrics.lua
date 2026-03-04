@@ -50,7 +50,7 @@ local function metrics()
 end
 
 local function query(qs)
-    r = ''
+    local r = ''
     local qs = utils.parse_args({ ['t']='_', ['k']='_'}, qs, '=', '&')
     -- type
     if qs.t == 'p' then
@@ -66,9 +66,9 @@ end
 return function(applet)
 
     if applet.qs == nil or applet.qs == '' then
-        r = metrics()
+        local r = metrics()
     else
-        r = query(applet.qs)
+        local r = query(applet.qs)
     end
 
     applet:set_status(200)
