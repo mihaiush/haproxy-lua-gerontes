@@ -50,8 +50,8 @@ local function metrics()
 end
 
 local function query(qs)
-    local r = ''
-    local qs = utils.parse_args({ ['t']='_', ['k']='_'}, qs, '=', '&')
+    qs = utils.parse_args({ ['t']='_', ['k']='_'}, qs, '=', '&')
+    local r
     -- type
     if qs.t == 'p' then
         -- proxy (backend)
@@ -64,11 +64,12 @@ local function query(qs)
 end
 
 return function(applet)
+    local r
 
     if applet.qs == nil or applet.qs == '' then
-        local r = metrics()
+        r = metrics()
     else
-        local r = query(applet.qs)
+        r = query(applet.qs)
     end
 
     applet:set_status(200)
