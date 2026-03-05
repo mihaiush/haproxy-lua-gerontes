@@ -1,8 +1,8 @@
 utils = require('gerontes.utils')
 
--- metrics
-local service_metrics = require('gerontes.metrics')
-core.register_service('gerontes_metrics', 'http', service_metrics)
+-- http interface
+local service_httpd = require('gerontes.httpd')
+core.register_service('gerontes_httpd', 'http', service_httpd)
 
 -- receive events from forks
 local function service_ipc(applet)

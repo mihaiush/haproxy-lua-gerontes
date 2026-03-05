@@ -49,28 +49,30 @@ local function metrics()
     return r
 end
 
-local function query(qs)
-    qs = utils.parse_args({ ['t']='_', ['k']='_'}, qs, '=', '&')
+local function proxyvalue(q)
     local r
-    -- type
-    if qs.t == 'p' then
-        -- proxy (backend)
-        r = tostring(B[qs.k].value)
-    elseif qs.t == 's' then
-        -- server
-        r = tostring(S[qs.k])
+    if B[q] then
+        r = tostring(B[q].value)
     end
     return r
+end
+
+local function servervalue(q)
+    return tostring(S[q])
 end
 
 return function(applet)
     local r
     local rc
+    
+    local qs = utils.parse_args({}, applet.qs, '=', '&')
 
-    if applet.qs == nil or applet.qs == '' then
+    if qs.cmd == nil or qs.cmd == 'metrics' then
         r = metrics()
-    else
-        r = query(applet.qs)
+    elseif qs.cmd == 'proxy' then
+        r = proxyvalue(qs.query)
+    elseif qs.cmd == 'server' then
+        r = servervalue(qs.query)
     end
 
     if r then

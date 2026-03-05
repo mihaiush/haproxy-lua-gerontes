@@ -1,6 +1,6 @@
 local function worker(label, target)
     target = utils.split(target,':')
-    local url = 'http://' .. target[1] .. ':' .. target[2] .. '/gerontes?t=p&k=' .. target[3]
+    local url = 'http://' .. target[1] .. ':' .. target[2] .. '/gerontes?cmd=proxy&query=' .. target[3]
     local httpclient = core.httpclient()
     local r = httpclient:get{url=url, timeout=1000*OPT.timeout}
     httpclient = nil
