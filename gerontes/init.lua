@@ -16,7 +16,7 @@ local function service_ipc(applet)
         r = 'ok'
     elseif cmd == 'server' then
         S[l[2]] = tonumber(l[3])
-        update_servers('ipc/' .. l[2])
+        update_servers('srvcheck/' .. l[2])
         r = 'ok'
     elseif cmd == 'metrics' then
         M['loop_latency'][l[2]] = l[3]

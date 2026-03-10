@@ -62,7 +62,7 @@ local function server_worker(srvtype, target, worker)
         if v ~= v_old then 
             utils.log.info(label .. v_old .. ' -> ' .. v)
             S[target] = v
-            update_servers('task/' .. target)
+            update_servers('srvcheck/' .. target)
             v_old = v
         end
 
