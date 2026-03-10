@@ -62,12 +62,14 @@ function update_servers(src)
                 sd:set_maint()
                 sd:shut_sess()
                 utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' DOWN')
+                M['server_value'][bn][sn] = 0
             end
         end
         for sn,sd in pairs(core.backends[bn].servers) do
             if sn == mn then
                 sd:set_ready()
                 utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' UP')
+                M['server_value'][bn][sn] = 1
             end
         end
     end
@@ -76,13 +78,14 @@ end
 
 B = {} -- backends
 S = {} -- servers
-M = { ['loop_latency'] = {}, ['server_latency'] = {} } -- metrics
+M = { ['loop_latency'] = {}, ['server_latency'] = {}, ['server_value'] = {}} -- metrics
 core.register_init(
     function()
         local bo -- backend options
         for bn,bd in pairs(core.backends) do -- backend name, backend data
             _,_,_,bo = bn:find('(.+)__gerontes_?(.*)')
             if bo then
+                M['server_value'][bn] = {}
                 B[bn] = {}
                 B[bn].value = 0
                 bo = utils.parse_args({xcheck=false}, bo, ':', '_')

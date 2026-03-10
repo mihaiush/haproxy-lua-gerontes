@@ -37,12 +37,7 @@ local function metrics()
         end
         r = r .. 'gerontes_proxy_value{proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. bd.value .. '\n'
         for sn,sd in pairs(core.backends[bn].servers) do
-            if sd:get_stats().status == 'no check' then
-                v = '1'
-            else
-                v = '0'
-            end
-            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. v .. '\n'
+            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. tostring(M['server_value'][bn][sn]) .. '\n'
         end
     end
 
