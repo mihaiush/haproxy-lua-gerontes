@@ -21,16 +21,12 @@ local function server_worker(srvtype, target, worker, apicall)
                     'Host: 127.0.0.1:8082\r\n' ..
                     '\r\n'
 
-    local v_old = -1
-    local err = 0
-    
     local sleep = 1000 * OPT.sleep
     local connect_to = math.ceil(OPT.timeout)
     local watch_to = 600 
-    local s
     local v = 0
-    local r = 'unknown'
-    local ok = false
+    local v_old = -1
+    local err = 0
    
     local function update()
         if v ~= v_old then
@@ -42,7 +38,10 @@ local function server_worker(srvtype, target, worker, apicall)
     end
  
     while true do
-        s = sleep
+        local r = 'unknown'
+        local ok = false
+        local data
+        local s = sleep
 
         update() -- we needed here for -1 -> 0 
 
@@ -53,7 +52,7 @@ local function server_worker(srvtype, target, worker, apicall)
         if ok then
             ok, r = tcp:send(request)
             if ok then
-                local data, r_code, r_text, chunked
+                local r_code, r_text, chunked
 
                 -- read headers
                 while true do
