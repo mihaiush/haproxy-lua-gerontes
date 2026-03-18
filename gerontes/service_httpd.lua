@@ -17,7 +17,7 @@ local function metrics()
     else
         x = 'off'
     end
-    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. xcheck .. '\n'
+    r = r .. 'gerontes_xcheck {xcheck="' .. x .. '"} ' .. M.xcheck .. '\n'
 
     for sn,sv in pairs(S) do
         r = r .. 'gerontes_server_value{server="' .. sn .. '"} ' .. tostring(sv) .. '\n'
@@ -37,7 +37,7 @@ local function metrics()
         end
         r = r .. 'gerontes_proxy_value{proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. bd.value .. '\n'
         for sn,sd in pairs(core.backends[bn].servers) do
-            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. tostring(M['server_value'][bn][sn]) .. '\n'
+            r = r .. 'gerontes_server_up{server="' .. sn .. '",proxy="' .. bn .. '",xcheck="' .. x .. '"} ' .. tostring(M['server_up'][bn][sn]) .. '\n'
         end
     end
 

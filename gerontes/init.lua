@@ -1,76 +1,62 @@
 utils = require('gerontes.utils')
 
 -- http interface
-local service_httpd = require('gerontes.httpd')
+local service_httpd = require('gerontes.service_httpd')
 core.register_service('gerontes_httpd', 'http', service_httpd)
-
--- receive events from forks
-local function service_ipc(applet)
-    local r
-    local l = applet:getline()
-    l = string.gsub(l, '\n$', '')
-    utils.log.debug('ipc: recive: ' .. l)
-    l = utils.split(l,' ')
-    local cmd = l[1]
-    if cmd == 'ping' then
-        r = 'ok'
-    elseif cmd == 'server' then
-        S[l[2]] = tonumber(l[3])
-        update_servers('srvcheck/' .. l[2])
-        r = 'ok'
-    elseif cmd == 'metrics' then
-        M['loop_latency'][l[2]] = l[3]
-        M['server_latency'][l[2]] = l[4]
-        r = 'ok'
-    else
-        r = 'err'
-    end
-    applet:send(r .. '\n')
-end
-core.register_service('gerontes_ipc', 'tcp', service_ipc)
 
 -- update servers status
 -- it should be called for every server or xcheck status change
-xcheck = 0 -- global xcheck status
 function update_servers(src)
     local mn    -- master name
     local mv    -- master value
     local sv
-   
+
+    local xcheck = 0
     if OPT.xCheck then
         xcheck = core.backends[OPT.xCheck]:get_srv_act()
     end
+    M.xcheck = xcheck
     utils.log.debug('update_servers: ' .. src .. ': xcheck: ' .. tostring(xcheck))
 
     for bn,bd in pairs(B) do
-        mv = 0
-        mn = ''
-        for _,sn in ipairs(bd.servers) do
-            sv = S[sn]
-            if bd.xcheck and xcheck == 0 then
-                sv = 0
+        if bd.xcheck and xcheck == 0 and OPT.xCheckFreeze then 
+            utils.log.warning('update_servers: ' .. src .. ': ' .. bn .. ': xcheck freeze, no update')
+        else 
+            mv = 0
+            mn = ''
+            for _,sn in ipairs(bd.servers) do
+                sv = S[sn]
+                if bd.xcheck and xcheck == 0 then
+                    sv = 0
+                end
+                if sv > 0 and (mv == 0 or sv < mv) then
+                    mn = sn
+                    mv = sv
+                end
             end
-            if sv > 0 and (mv == 0 or sv < mv) then
-                mn = sn
-                mv = sv
+            bd.value = mv
+            -- first DOWN then UP, no 2 servers can be up
+            for sn,sd in pairs(core.backends[bn].servers) do
+                if sn ~= mn then
+                    sd:set_maint()
+                    sd:shut_sess()
+                    utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' DOWN')
+                    M['server_up'][bn][sn] = 0
+                end
+            end
+            for sn,sd in pairs(core.backends[bn].servers) do
+                if sn == mn then
+                    sd:set_ready()
+                    utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' UP')
+                    M['server_up'][bn][sn] = 1
+                end
             end
         end
-        bd.value = mv
-        -- first DOWN then UP, no 2 servers can be up
-        for sn,sd in pairs(core.backends[bn].servers) do
-            if sn ~= mn then
-                sd:set_maint()
-                sd:shut_sess()
-                utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' DOWN')
-                M['server_value'][bn][sn] = 0
-            end
-        end
-        for sn,sd in pairs(core.backends[bn].servers) do
-            if sn == mn then
-                sd:set_ready()
-                utils.log.info('update_servers: ' .. src .. ': ' .. bn .. '/' .. sn .. ' UP')
-                M['server_value'][bn][sn] = 1
-            end
+    end
+
+    for i,q in ipairs(Q) do
+        if q.a then
+            q.q:push('update')
         end
     end
 end
@@ -78,14 +64,15 @@ end
 
 B = {} -- backends
 S = {} -- servers
-M = { ['loop_latency'] = {}, ['server_latency'] = {}, ['server_value'] = {}} -- metrics
+M = { ['xcheck'] = 0, ['loop_latency'] = {}, ['server_latency'] = {}, ['server_up'] = {}} -- metrics
+Q = {} -- watch queues
 core.register_init(
     function()
         local bo -- backend options
         for bn,bd in pairs(core.backends) do -- backend name, backend data
             _,_,_,bo = bn:find('(.+)__gerontes_?(.*)')
             if bo then
-                M['server_value'][bn] = {}
+                M['server_up'][bn] = {}
                 B[bn] = {}
                 B[bn].value = 0
                 bo = utils.parse_args({xcheck=false}, bo, ':', '_')
@@ -149,13 +136,16 @@ OPT.softFail       = 5     -- how many times a server check can fail before mark
 OPT.failMultiplier = 15    -- multiplier of sleep in case the server/network were marked down
 OPT.ipcSock        = '/dev/shm/gerontes.sock'   -- socket used for communication with background processes
 OPT.debug          = false
-OPT.xCheck         = nil -- what backend to use for extra check
+OPT.xCheck         = nil   -- what backend to use for extra check
+OPT.xCheckFreeze   = false -- if xCheck fails no updates, freeze status
 OPT.mysqlUser      = nil
 OPT.mysqlPassword  = nil
 OPT.redisAuth      = nil
 OPT.haproxyMetrics = false -- haproxy metrics url 
 OPT.latencyMetrics = false -- after how many checks to report latency metrics
 OPT.staticMetrics  = false -- file with static metrics calculated at startup
+OPT.watchTimeout   = 600   -- seconds, after what to to close watch connections
+OPT.watchGC        = false --60    -- seconds, between 2 watch garbage collection
 OPT = utils.parse_args(OPT, {...})
 if OPT.debug then
     utils.log.enable_debug()
@@ -179,4 +169,17 @@ if OPT.staticMetrics then
     for l in io.lines(OPT.staticMetrics) do
         STATIC_METRICS = STATIC_METRICS .. 'gerontes_' .. l .. '\n'
     end  
+end
+
+-- get/watch backend value
+local service_bv = require('gerontes.service_bv')
+core.register_service('gerontes_bv', 'tcp', service_bv.svc)
+if OPT.watchGC then
+    core.register_task(service_bv.gc)
+end
+
+-- receive events from forks
+if OPT.ipcSock then
+    local service_ipc = require('gerontes.service_ipc')
+    core.register_service('gerontes_ipc', 'tcp', service_ipc)
 end

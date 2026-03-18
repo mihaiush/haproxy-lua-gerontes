@@ -1,8 +1,3 @@
-local function now()
-    local t = core.now()
-    return t.sec + t.usec/1000000
-end
-
 local function server_worker(srvtype, target, worker)
     local label = srvtype .. '/' .. target -- log label
     label = 'servercheck: ' .. label .. ': '
@@ -28,9 +23,9 @@ local function server_worker(srvtype, target, worker)
     while true do
         s = sleep
 
-        t0 = now()        
+        t0 = utils.now()        
         ok, r = worker(label, utils.strip_type(target))
-        t0 = 1000 * (now() - t0)
+        t0 = 1000 * (utils.now() - t0)
 
         if ok then
             v = r

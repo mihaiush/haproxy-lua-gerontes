@@ -88,7 +88,13 @@ utils.parse_args = function(def, args, s1, s2, m)
             if not a[2] then
                 opt[a[1]] = true
             else
-                opt[a[1]] = tonumber(a[2]) or utils.tobool(a[2]) or a[2]
+                if tonumber(a[2]) ~= nil then
+                    opt[a[1]] = tonumber(a[2])
+                elseif  utils.tobool(a[2]) ~= nil then
+                    opt[a[1]] = utils.tobool(a[2])
+                else
+                    opt[a[1]] = a[2]
+                end
             end
         end
     end 
@@ -111,6 +117,11 @@ utils.strip_type = function(s)
         return s[2]
     end
     return s[1]
+end
+
+utils.now = function()
+    local t = core.now()
+    return t.sec + t.usec/1000000
 end
 
 return utils

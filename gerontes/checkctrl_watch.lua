@@ -1,10 +1,5 @@
 local json = require('lunajson')
 
-local function now()
-    local t = core.now()
-    return t.sec + t.usec/1000000
-end
-
 local function server_worker(srvtype, target, worker, apicall)
     local label = srvtype .. '/' .. target -- log label
     label = 'servercheck: ' .. label .. ': '
@@ -23,7 +18,6 @@ local function server_worker(srvtype, target, worker, apicall)
 
     local sleep = 1000 * OPT.sleep
     local connect_to = math.ceil(OPT.timeout)
-    local watch_to = 600 
     local v = 0
     local v_old = -1
     local err = 0
@@ -47,7 +41,7 @@ local function server_worker(srvtype, target, worker, apicall)
 
         local tcp = core.tcp()
         tcp:settimeout(connect_to)
-        local t0 = now()
+        local t0 = utils.now()
         ok, r = tcp:connect('127.0.0.1', 8082)
         if ok then
             ok, r = tcp:send(request)
@@ -88,10 +82,10 @@ local function server_worker(srvtype, target, worker, apicall)
 
                 -- read events
                 if ok then
-                    t0 = 1000 * (now() - t0)
+                    t0 = 1000 * (utils.now() - t0)
                     M['server_latency'][target] = t0
                 
-                    tcp:settimeout(watch_to)
+                    tcp:settimeout(OPT.watchTimeout)
                     while true do
                         -- read chunk size
                         while true do
