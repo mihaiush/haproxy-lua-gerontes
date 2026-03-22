@@ -2,7 +2,7 @@ local json = require('lunajson')
 
 local function server_worker(srvtype, target, worker, apicall)
     local label = srvtype .. '/' .. target -- log label
-    label = 'servercheck: ' .. label .. ': '
+    label = 'kubewatch: ' .. label .. ': '
  
     if OPT.debug then
         utils.log.enable_debug()
@@ -17,31 +17,20 @@ local function server_worker(srvtype, target, worker, apicall)
                     '\r\n'
 
     local sleep = 1000 * OPT.sleep
-    local connect_to = math.ceil(OPT.timeout)
-    local v = 0
-    local v_old = -1
     local err = 0
+
+    core.sleep(2) -- wait for servers to start
    
-    local function update()
-        if v ~= v_old then
-            utils.log.info(label .. v_old .. ' -> ' .. v)
-            S[target] = v
-            update_servers('srvcheck/' .. target)
-            v_old = v
-        end
-    end
- 
     while true do
         local r = 'unknown'
         local ok = false
         local data
         local s = sleep
-
-        update() -- we needed here for -1 -> 0 
-
+        
         local tcp = core.tcp()
-        tcp:settimeout(connect_to)
+        tcp:settimeout(OPT.timeout)
         local t0 = utils.now()
+        utils.log.debug(label .. 'connect')
         ok, r = tcp:connect('127.0.0.1', 8082)
         if ok then
             ok, r = tcp:send(request)
@@ -50,7 +39,7 @@ local function server_worker(srvtype, target, worker, apicall)
 
                 -- read headers
                 while true do
-                    data, ok = tcp:receive('*l')
+                    data, ok = tcp:receive()
                     if ok == nil then
                         data = data:lower()
                         ok = true
@@ -84,13 +73,14 @@ local function server_worker(srvtype, target, worker, apicall)
                 if ok then
                     t0 = 1000 * (utils.now() - t0)
                     M['server_latency'][target] = t0
+                    utils.log.debug(label .. 'api latency: ' .. t0)
                 
                     tcp:settimeout(OPT.watchTimeout)
                     while true do
                         -- read chunk size
                         while true do
                             -- loop until no blank line
-                            data, ok = tcp:receive('*l')
+                            data, ok = tcp:receive()
                             if ok == nil then
                                 if data ~= '' then
                                     data = tonumber(data,16)
@@ -100,7 +90,8 @@ local function server_worker(srvtype, target, worker, apicall)
                             else
                                 data = nil
                                 r = ok
-                                ok = true -- most likely watch timeout
+                                ok = true -- most likely watch timeou
+                                s = 1
                                 break
                             end
                         end
@@ -116,8 +107,7 @@ local function server_worker(srvtype, target, worker, apicall)
                             end
                             if ok then
                                 err = 0
-                                v = r
-                                update()
+                                set_server(target, r)
                             else
                                 break 
                             end
@@ -136,14 +126,12 @@ local function server_worker(srvtype, target, worker, apicall)
 
         if not ok then
             if err < OPT.softFail then
-                v = v_old
                 err = err + 1
-                utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
+                utils.log.warning(label .. 'soft-failed: ' .. S[target] .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
             else
-                v = 0
                 s = OPT.failMultiplier * sleep
                 utils.log.error(label .. 'hard-failed' .. ': ' .. r)
-                update()
+                set_server(target, 0)
             end
         end
 

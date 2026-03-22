@@ -35,7 +35,7 @@ local function worker(label, data)
     )
 end
 
-local ctrl = require('gerontes.checkctrl_watch')
+local ctrl = require('gerontes.checkctrl_kubewatch')
 
 return function(target)
     ctrl('pod', target, worker, '/pods?fieldSelector=metadata.name=' .. utils.strip_type(target))

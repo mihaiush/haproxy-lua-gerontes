@@ -1,9 +1,5 @@
 utils = require('gerontes.utils')
 
--- http interface
-local service_httpd = require('gerontes.service_httpd')
-core.register_service('gerontes_httpd', 'http', service_httpd)
-
 -- update servers status
 -- it should be called for every server or xcheck status change
 function update_servers(src)
@@ -61,6 +57,13 @@ function update_servers(src)
     end
 end
 
+function set_server(target, v)
+    if S[target] ~= v then
+        utils.log.info('server: ' .. target .. ': ' .. S[target] .. ' -> ' .. v)
+        S[target] = v
+        update_servers('server/' .. target)
+    end
+end
 
 B = {} -- backends
 S = {} -- servers
@@ -97,6 +100,8 @@ core.register_init(
 
         utils.log.debug('backends:\n' .. utils.dump(B))
         utils.log.debug('servers:\n' .. utils.dump(S))
+
+        update_servers('init')
 
         -- events on xcheck servers
         if OPT.xCheck then
@@ -183,3 +188,7 @@ if OPT.ipcSock then
     local service_ipc = require('gerontes.service_ipc')
     core.register_service('gerontes_ipc', 'tcp', service_ipc)
 end
+
+-- http interface
+local service_httpd = require('gerontes.service_httpd')
+core.register_service('gerontes_httpd', 'http', service_httpd)

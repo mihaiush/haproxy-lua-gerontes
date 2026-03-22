@@ -17,14 +17,13 @@ local function ipc(msg)
     return string.gsub(r, '\n$', '')
 end
 
-
 local function server_worker(srvtype, target, worker, to_flag)
     local label = srvtype .. '/' .. target -- log label
     
     local main_data = '/dev/shm/gerontes_' .. string.gsub(label,'[^%a%d]','_')
     local worker_data = main_data .. '_worker' -- pass data from worker
     main_data = main_data .. '_main' -- pass data between loops
-    label = 'servercheck: ' .. label .. ': '
+    label = 'fork: ' .. label .. ': '
     
     local msleep = require('time.sleep.msleep')
     local socket = require('socket')
@@ -35,7 +34,7 @@ local function server_worker(srvtype, target, worker, to_flag)
     utils.log.info(label .. 'start')
 
     -- save vars between forks
-    local v_old = -1
+    local v_old = 0
     local err = 0
     local loop_count = 0
     local loop_latency = 0
@@ -70,7 +69,7 @@ local function server_worker(srvtype, target, worker, to_flag)
         sw = 10
     end
     
-    msleep (2 * sleep) -- wait for haproxy init phase to finish and ipc to start
+    msleep(2000) -- wait for haproxy init phase to finish and ipc to start
     if ipc('ping') ~= 'ok' then
         error(err_ipc_ping)
     end
@@ -156,17 +155,15 @@ local function server_worker(srvtype, target, worker, to_flag)
                     end
                 end
             else
-                if v_old ~= -1 then
-                    if err < OPT.softFail then
-                        v = v_old
-                        err = err + 1
-                        utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
-                    else
-                        v = 0
-                        s = OPT.failMultiplier * sleep
-                        utils.log.error(label .. 'hard-failed' .. ': ' .. r)
-                    end
-                end 
+                if err < OPT.softFail then
+                    v = v_old
+                    err = err + 1
+                    utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
+                else
+                    v = 0
+                    s = OPT.failMultiplier * sleep
+                    utils.log.error(label .. 'hard-failed' .. ': ' .. r)
+                end
             end
             -- send ipc message 
             if v ~= v_old then 
@@ -185,16 +182,16 @@ local function server_worker(srvtype, target, worker, to_flag)
 end
 
 return function(srvtype, target, worker, to_flag)
-    utils.log.debug('servercheck: ' .. srvtype .. ': ' .. target .. ': timeout: ' .. tostring(to_flag))
+    utils.log.debug('fork: ' .. srvtype .. ': ' .. target .. ': timeout: ' .. tostring(to_flag))
     if posix.fork() == 0 then
         while true do
             ok, r = pcall(server_worker, srvtype, target, worker, to_flag)
             if not ok then
                 if r:find(err_ipc_ping) then
-                    utils.log.error('servercheck: ' .. srvtype .. ': ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
+                    utils.log.error('fork: ' .. srvtype .. ': ' .. target .. ': ' .. err_ipc_ping .. ', verify ipc listener in haproxy config')
                     posix.kill(master_pid, 15)
                 else
-                    utils.log.error('servercheck: ' .. srvtype .. ': ' .. target .. ': ' .. r)
+                    utils.log.error('fork: ' .. srvtype .. ': ' .. target .. ': ' .. r)
                 end
             end
         end

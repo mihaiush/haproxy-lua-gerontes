@@ -1,13 +1,12 @@
 local function server_worker(srvtype, target, worker)
     local label = srvtype .. '/' .. target -- log label
-    label = 'servercheck: ' .. label .. ': '
+    label = 'task: ' .. label .. ': '
     
     if OPT.debug then
         utils.log.enable_debug()
     end
     utils.log.info(label .. 'start')
 
-    local v_old = -1
     local err = 0
     local loop_count = 0
     local loop_latency = 0
@@ -19,6 +18,8 @@ local function server_worker(srvtype, target, worker)
     local r = 0
     local ok = false
     local t0, t1
+
+    core.sleep(2) -- wait for servers to start
     
     while true do
         s = sleep
@@ -42,25 +43,16 @@ local function server_worker(srvtype, target, worker)
                     end
                 end
         else
-            if v_old ~= -1 then
-                if err < OPT.softFail then
-                    v = v_old
-                    err = err + 1
-                    utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
-                else
-                    v = 0
-                    s = OPT.failMultiplier * sleep
-                    utils.log.error(label .. 'hard-failed' .. ': ' .. r)
-                end
-            end 
+            if err < OPT.softFail then
+                err = err + 1
+                utils.log.warning(label .. 'soft-failed: ' .. v .. ' ' .. err .. '/' .. OPT.softFail ..': ' .. r)
+            else
+                v = 0
+                s = OPT.failMultiplier * sleep
+                utils.log.error(label .. 'hard-failed' .. ': ' .. r)
+            end
         end
-        if v ~= v_old then 
-            utils.log.info(label .. v_old .. ' -> ' .. v)
-            S[target] = v
-            update_servers('srvcheck/' .. target)
-            v_old = v
-        end
-
+        set_server(target,v)
         core.msleep(s)
     end -- while
 end
