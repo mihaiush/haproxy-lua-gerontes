@@ -176,13 +176,6 @@ if OPT.staticMetrics then
     end  
 end
 
--- get/watch backend value
-local service_bv = require('gerontes.service_bv')
-core.register_service('gerontes_bv', 'tcp', service_bv.svc)
-if OPT.watchGC then
-    core.register_task(service_bv.gc)
-end
-
 -- receive events from forks
 if OPT.ipcSock then
     local service_ipc = require('gerontes.service_ipc')

@@ -1,6 +1,6 @@
-ARG VERSION=3.2.10-trixie
+ARG VERSION=3.2.15-trixie
 
-FROM haproxy:$VERSION AS build
+FROM docker.io/haproxy:$VERSION AS build
 
 USER 0
 
@@ -47,7 +47,7 @@ RUN \
     . /environ &&\
     cp -rv /static/* /build/share/lua/$LUA_VERSION/
 
-FROM haproxy:$VERSION
+FROM docker.io/haproxy:$VERSION
 
 USER 0
 
