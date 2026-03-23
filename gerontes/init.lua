@@ -49,12 +49,6 @@ function update_servers(src)
             end
         end
     end
-
-    for i,q in ipairs(Q) do
-        if q.a then
-            q.q:push('update')
-        end
-    end
 end
 
 function set_server(target, v)
@@ -68,7 +62,6 @@ end
 B = {} -- backends
 S = {} -- servers
 M = { ['xcheck'] = 0, ['loop_latency'] = {}, ['server_latency'] = {}, ['server_up'] = {}} -- metrics
-Q = {} -- watch queues
 core.register_init(
     function()
         local bo -- backend options
