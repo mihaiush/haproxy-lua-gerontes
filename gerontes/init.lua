@@ -143,7 +143,6 @@ OPT.haproxyMetrics = false -- haproxy metrics url
 OPT.latencyMetrics = false -- after how many checks to report latency metrics
 OPT.staticMetrics  = false -- file with static metrics calculated at startup
 OPT.watchTimeout   = 600   -- seconds, after what to to close watch connections
-OPT.watchGC        = false --60    -- seconds, between 2 watch garbage collection
 OPT = utils.parse_args(OPT, {...})
 if OPT.debug then
     utils.log.enable_debug()
