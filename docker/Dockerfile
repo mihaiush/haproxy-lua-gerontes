@@ -1,4 +1,4 @@
-ARG VERSION=3.2.15-trixie
+ARG VERSION=3.2.16-trixie
 
 FROM docker.io/haproxy:$VERSION AS build
 
@@ -38,7 +38,7 @@ RUN \
 RUN \
     . /environ &&\
     cd /tmp &&\
-    git clone https://github.com/mihaiush/luasql.git &&\
+    git clone https://github.com/lunarmodules/luasql.git &&\
     cd luasql &&\
     $LUAROCKS make rockspec/luasql-mysql-2.8.0-1.rockspec MYSQL_INCDIR=/usr/include/mysql
 
